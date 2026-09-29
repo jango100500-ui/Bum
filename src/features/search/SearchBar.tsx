@@ -1,38 +1,30 @@
 import { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { LiquidGlass } from '../../shared/ui/LiquidGlass/LiquidGlass';
 
-const PLACEHOLDERS = [
-  'Введите название фильма…',
-  'Введите название сериала…',
-  'Введите название мультфильма…',
-  'Введите имя актера…'
+const PLACEHOLDERS: string[] = [
+  'Введи название фильма…',
+  'Введи название сериала…',
+  'Введи мультфильм…',
+  'Введи книгу…',
+  'Введи аниме…'
 ];
 
-export const SearchBar = () => {
+interface SearchBarProps {
+  onOpenMenu: () => void;
+}
+
+export const SearchBar = ({ onOpenMenu }: SearchBarProps) => {
   const [value, setValue] = useState('');
-  const [index, setIndex] = useState(0);
-  const [exitingIndex, setExitingIndex] = useState<number | null>(null);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setIndex((prev) => {
-        setExitingIndex(prev);
-        return (prev + 1) % PLACEHOLDERS.length;
-      });
-    }, 5000);
+    const timer = window.setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDERS.length);
+    }, 4500);
 
     return () => clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    if (exitingIndex !== null) {
-      const clearTimer = setTimeout(() => {
-        setExitingIndex(null);
-      }, 340);
-      return () => clearTimeout(clearTimer);
-    }
-  }, [exitingIndex]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
@@ -55,7 +47,7 @@ export const SearchBar = () => {
         left: '50%',
         transform: 'translateX(-50%)',
         width: 'calc(100% - 32px)',
-        maxWidth: 540,
+        maxWidth: 560,
         height: 52,
         display: 'flex',
         alignItems: 'center',
@@ -63,17 +55,55 @@ export const SearchBar = () => {
         zIndex: 10
       }}
     >
+      <button
+        type="button"
+        onClick={onOpenMenu}
+        style={{
+          position: 'relative',
+          width: 52,
+          height: 52,
+          borderRadius: '50%',
+          border: 'none',
+          backgroundColor: 'transparent',
+          padding: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          flexShrink: 0
+        }}
+      >
+        <LiquidGlass isPill={false} radius={26} bezel={4.5} thickness={20.0} blur={0.0} />
+
+        <img
+          src="/menu.png"
+          alt="Menu"
+          width="20"
+          height="20"
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            width: 20,
+            height: 20,
+            objectFit: 'contain',
+            opacity: 0.85,
+            filter: 'brightness(0)',
+            pointerEvents: 'none'
+          }}
+        />
+      </button>
+
       <div
         onClick={handleContainerClick}
         style={{
           position: 'relative',
           flex: 1,
-          height: '100%',
+          height: 52,
           borderRadius: 9999,
           cursor: 'text'
         }}
       >
-        <LiquidGlass isPill={true} radius={26} bezel={17.0} thickness={22.0} blur={0.0} />
+        <LiquidGlass isPill={true} radius={26} bezel={4.5} thickness={20.0} blur={0.0} />
 
         <div
           style={{
@@ -103,63 +133,26 @@ export const SearchBar = () => {
             }}
           />
 
-          <div
-            style={{
-              position: 'relative',
-              flex: 1,
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              overflow: 'hidden'
-            }}
-          >
+          <div style={{ position: 'relative', flex: 1, height: '100%', display: 'flex', alignItems: 'center' }}>
             {value.length === 0 && (
-              <div
+              <span
+                key={placeholderIndex}
                 style={{
                   position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  alignItems: 'center',
+                  left: 0,
+                  right: 0,
+                  color: '#1c1c1e',
+                  fontSize: 16,
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
                   pointerEvents: 'none',
-                  overflow: 'hidden'
+                  animation: 'placeholderFadeSlide 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards'
                 }}
               >
-                {exitingIndex !== null && (
-                  <span
-                    key={`exit-${exitingIndex}`}
-                    className="placeholder-exit"
-                    style={{
-                      position: 'absolute',
-                      width: '100%',
-                      fontSize: 16,
-                      color: '#8e8e93',
-                      fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-                      whiteSpace: 'nowrap',
-                      textOverflow: 'ellipsis',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {PLACEHOLDERS[exitingIndex]}
-                  </span>
-                )}
-
-                <span
-                  key={`enter-${index}`}
-                  className="placeholder-enter"
-                  style={{
-                    position: 'absolute',
-                    width: '100%',
-                    fontSize: 16,
-                    color: '#8e8e93',
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-                    whiteSpace: 'nowrap',
-                    textOverflow: 'ellipsis',
-                    overflow: 'hidden'
-                  }}
-                >
-                  {PLACEHOLDERS[index]}
-                </span>
-              </div>
+                {PLACEHOLDERS[placeholderIndex]}
+              </span>
             )}
 
             <input
@@ -179,9 +172,7 @@ export const SearchBar = () => {
                 fontSize: 16,
                 color: '#1c1c1e',
                 fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-                WebkitAppearance: 'none',
-                position: 'relative',
-                zIndex: 2
+                WebkitAppearance: 'none'
               }}
             />
           </div>
@@ -201,8 +192,7 @@ export const SearchBar = () => {
                 border: 'none',
                 padding: 0,
                 cursor: 'pointer',
-                flexShrink: 0,
-                zIndex: 3
+                flexShrink: 0
               }}
             >
               <svg
@@ -221,43 +211,6 @@ export const SearchBar = () => {
           )}
         </div>
       </div>
-
-      <button
-        type="button"
-        className="glass-btn-press"
-        style={{
-          position: 'relative',
-          width: 52,
-          height: 52,
-          borderRadius: '50%',
-          border: 'none',
-          padding: 0,
-          background: 'transparent',
-          cursor: 'pointer',
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        <LiquidGlass isPill={false} radius={26} bezel={17.0} thickness={22.0} blur={0.0} />
-        <img
-          src="/recently.png"
-          alt=""
-          width="20"
-          height="20"
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            width: 20,
-            height: 20,
-            objectFit: 'contain',
-            filter: 'brightness(0)',
-            opacity: 0.85,
-            pointerEvents: 'none'
-          }}
-        />
-      </button>
     </div>
   );
 };
