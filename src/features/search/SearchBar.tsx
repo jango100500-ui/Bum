@@ -40,26 +40,24 @@ export const SearchBar = () => {
           gap: 12
         }}
       >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#3c3c4399"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ flexShrink: 0 }}
-        >
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
+        <img
+          src="/search.png"
+          alt=""
+          width={18}
+          height={18}
+          style={{
+            flexShrink: 0,
+            objectFit: 'contain',
+            pointerEvents: 'none',
+            opacity: 0.65
+          }}
+        />
 
         <input
           type="text"
           value={value}
           onChange={handleChange}
-          placeholder="Type a movie or book..."
+          placeholder="Введи название фильма, сериала или мультфильма…"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
