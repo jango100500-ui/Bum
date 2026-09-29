@@ -262,6 +262,7 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
 
       if (!sceneTexture) {
         const bgCanvas = (sceneCanvasRef?.current ||
+          document.getElementById('emoji-canvas') ||
           document.querySelector('canvas:not([data-glass="true"])')) as HTMLCanvasElement | null;
 
         if (bgCanvas && bgCanvas.width > 0 && bgCanvas.height > 0) {
@@ -276,7 +277,10 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
         sceneTexture.needsUpdate = true;
       }
 
-      renderer.render(scene, camera);
+      try {
+        renderer.render(scene, camera);
+      } catch {}
+
       animationFrameId = requestAnimationFrame(render);
     };
 
