@@ -24,7 +24,7 @@ body,
   height: 100dvh;
   overflow: hidden;
   position: fixed;
-  background-color: #0c0c0e;
+  background-color: #f2f2f7;
   touch-action: none;
   overscroll-behavior: none;
 }
