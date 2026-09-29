@@ -1,0 +1,300 @@
+import React, { useEffect, useRef } from 'react';
+import * as THREE from 'three';
+
+const vertexShader = `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = vec4(position, 1.0);
+}
+`;
+
+const fragmentShader = `
+precision highp float;
+varying vec2 vUv;
+
+uniform vec2 uResolution;
+uniform vec2 uGlassCenter;
+uniform vec2 uGlassSize;
+uniform float uRadius;
+uniform float uBezel;
+uniform float uThickness;
+uniform float uIOR;
+uniform float uBlur;
+uniform float uSpecular;
+uniform float uRimGlow;
+uniform float uTint;
+uniform float uShadow;
+uniform float uIsPill;
+
+uniform sampler2D uSceneTex;
+uniform vec2 uScreenResolution;
+uniform vec2 uGlobalOffset;
+uniform float uHasSceneTex;
+
+float sdRoundedRect(vec2 p, vec2 halfSize, float r) {
+  vec2 q = abs(p) - halfSize + r;
+  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+
+float surfaceHeight(float t) {
+  float s = 1.0 - t;
+  return pow(1.0 - s * s * s * s, 0.25);
+}
+
+vec3 sampleBackground(vec2 px) {
+  vec3 defaultBg = vec3(0.949, 0.949, 0.969);
+
+  if (uHasSceneTex < 0.5) {
+    return defaultBg;
+  }
+
+  vec2 globalPx = uGlobalOffset + px;
+  vec2 sceneUv = vec2(globalPx.x / uScreenResolution.x, 1.0 - (globalPx.y / uScreenResolution.y));
+
+  if (sceneUv.x < 0.0 || sceneUv.x > 1.0 || sceneUv.y < 0.0 || sceneUv.y > 1.0) {
+    return defaultBg;
+  }
+
+  vec4 sceneColor = texture2D(uSceneTex, sceneUv);
+  return mix(defaultBg, sceneColor.rgb, sceneColor.a);
+}
+
+void main() {
+  vec2 screenPx = vec2(vUv.x, 1.0 - vUv.y) * uResolution;
+  vec2 p = screenPx - uGlassCenter;
+  vec2 halfSize = uGlassSize * 0.5;
+
+  float safeRadius = min(uRadius, min(halfSize.x, halfSize.y) - 1.0);
+  safeRadius = max(safeRadius, 0.0);
+
+  float sd = sdRoundedRect(p, halfSize, safeRadius);
+
+  if (sd > 0.0) {
+    float shadowFalloff = exp(-sd * sd / 260.0);
+    float shadowStrength = uIsPill > 0.5 ? 0.14 : uShadow * 0.4;
+    gl_FragColor = vec4(0.0, 0.0, 0.0, shadowStrength * shadowFalloff);
+    return;
+  }
+
+  float distFromEdge = -sd;
+  float bezel = min(uBezel, min(safeRadius, min(halfSize.x, halfSize.y)) - 1.0);
+  bezel = max(bezel, 1.0);
+
+  float t = clamp(distFromEdge / bezel, 0.0, 1.0);
+  float h = surfaceHeight(t);
+  float dt = 0.001;
+  float h2 = surfaceHeight(min(t + dt, 1.0));
+  float dh = (h2 - h) / dt;
+
+  float slopeAngle = atan(dh * (uThickness / bezel));
+  float sinR = clamp(sin(slopeAngle) / uIOR, -1.0, 1.0);
+  float thetaR = asin(sinR);
+  float displacement = h * uThickness * (tan(slopeAngle) - tan(thetaR));
+
+  vec2 grad;
+  float eps = 0.5;
+  grad.x = sdRoundedRect(p + vec2(eps, 0.0), halfSize, safeRadius) - sdRoundedRect(p - vec2(eps, 0.0), halfSize, safeRadius);
+  grad.y = sdRoundedRect(p + vec2(0.0, eps), halfSize, safeRadius) - sdRoundedRect(p - vec2(0.0, eps), halfSize, safeRadius);
+
+  float gradLen = length(grad);
+  grad = gradLen > 0.0001 ? grad / gradLen : vec2(0.0);
+
+  float dispSpread = 0.045;
+  vec2 offsetR = -grad * (displacement * (1.0 + dispSpread));
+  vec2 offsetG = -grad * displacement;
+  vec2 offsetB = -grad * (displacement * (1.0 - dispSpread));
+
+  float colR = sampleBackground(screenPx + offsetR).r;
+  float colG = sampleBackground(screenPx + offsetG).g;
+  float colB = sampleBackground(screenPx + offsetB).b;
+  vec3 color = vec3(colR, colG, colB);
+
+  vec2 lightDir = normalize(vec2(0.5, -0.7));
+  float rimDot = abs(dot(grad, lightDir));
+  float rimFalloff = 1.0 - smoothstep(0.0, bezel * 0.45, distFromEdge);
+  float specHighlight = pow(rimDot * rimFalloff, 1.5);
+  color += vec3(specHighlight * uSpecular * uRimGlow);
+
+  float innerRim = smoothstep(0.35, 1.2, distFromEdge) * (1.0 - smoothstep(1.2, 2.1, distFromEdge));
+  color += vec3(innerRim * 0.055 * uSpecular);
+
+  float angle = atan(grad.y, grad.x) * 1.4;
+  vec3 rainbow = 0.5 + 0.5 * cos(angle + vec3(0.0, 2.05, 4.1));
+  float rainbowStrength = (specHighlight * 0.65 + innerRim * 0.45) * uSpecular;
+  color += rainbow * rainbowStrength;
+
+  float edgeLine = 1.0 - smoothstep(0.0, 1.45, distFromEdge);
+  if (uIsPill > 0.5) {
+    vec3 pillContour = vec3(0.24, 0.24, 0.27);
+    color = mix(color, pillContour, edgeLine * 0.55);
+  } else {
+    color += vec3(edgeLine * uSpecular * 0.34);
+    color += rainbow * (edgeLine * 0.28 * uSpecular);
+  }
+
+  color = mix(color, vec3(1.0), uTint);
+  float alpha = smoothstep(0.0, 1.5, distFromEdge);
+
+  gl_FragColor = vec4(color, alpha);
+}
+`;
+
+interface LiquidGlassProps {
+  radius?: number;
+  noShadow?: boolean;
+  isPill?: boolean;
+  sceneCanvasRef?: React.RefObject<HTMLCanvasElement>;
+}
+
+export const LiquidGlass: React.FC<LiquidGlassProps> = ({
+  radius = 26,
+  noShadow = false,
+  isPill = true,
+  sceneCanvasRef
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
+
+    const margin = 26;
+
+    let baseW = container.clientWidth || 1;
+    let baseH = container.clientHeight || 1;
+    let totalW = baseW + margin * 2;
+    let totalH = baseH + margin * 2;
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      alpha: true,
+      antialias: false,
+      powerPreference: 'high-performance'
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(totalW, totalH);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    let sceneTexture: THREE.CanvasTexture | null = null;
+
+    const uniforms = {
+      uResolution: { value: new THREE.Vector2(totalW, totalH) },
+      uGlassCenter: { value: new THREE.Vector2(totalW / 2, totalH / 2) },
+      uGlassSize: { value: new THREE.Vector2(baseW, baseH) },
+      uRadius: { value: radius },
+      uThickness: { value: isPill ? 22.0 : 24.0 },
+      uBezel: { value: isPill ? 17.0 : 20.0 },
+      uIOR: { value: isPill ? 2.35 : 2.70 },
+      uBlur: { value: isPill ? 1.0 : 2.0 },
+      uSpecular: { value: 0.52 },
+      uRimGlow: { value: 0.03 },
+      uTint: { value: 0.07 },
+      uShadow: { value: noShadow ? 0.0 : 0.08 },
+      uIsPill: { value: isPill ? 1.0 : 0.0 },
+      uSceneTex: { value: new THREE.Texture() },
+      uScreenResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+      uGlobalOffset: { value: new THREE.Vector2(0, 0) },
+      uHasSceneTex: { value: 0.0 }
+    };
+
+    const material = new THREE.ShaderMaterial({
+      vertexShader,
+      fragmentShader,
+      transparent: true,
+      depthTest: false,
+      uniforms
+    });
+
+    scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
+
+    let animationFrameId: number;
+
+    const render = () => {
+      if (container) {
+        const curW = container.clientWidth;
+        const curH = container.clientHeight;
+        if (curW > 0 && curH > 0 && (curW !== baseW || curH !== baseH)) {
+          baseW = curW;
+          baseH = curH;
+          totalW = baseW + margin * 2;
+          totalH = baseH + margin * 2;
+          renderer.setSize(totalW, totalH);
+          uniforms.uResolution.value.set(totalW, totalH);
+          uniforms.uGlassCenter.value.set(totalW / 2, totalH / 2);
+          uniforms.uGlassSize.value.set(baseW, baseH);
+        }
+
+        const rect = container.getBoundingClientRect();
+        uniforms.uGlobalOffset.value.set(rect.left - margin, rect.top - margin);
+        uniforms.uScreenResolution.value.set(
+          window.innerWidth || document.documentElement.clientWidth || 1,
+          window.innerHeight || document.documentElement.clientHeight || 1
+        );
+      }
+
+      if (!sceneTexture) {
+        const bgCanvas = (sceneCanvasRef?.current ||
+          document.querySelector('canvas:not([data-glass="true"])')) as HTMLCanvasElement | null;
+
+        if (bgCanvas && bgCanvas.width > 0 && bgCanvas.height > 0) {
+          sceneTexture = new THREE.CanvasTexture(bgCanvas);
+          sceneTexture.generateMipmaps = false;
+          sceneTexture.minFilter = THREE.LinearFilter;
+          sceneTexture.magFilter = THREE.LinearFilter;
+          uniforms.uSceneTex.value = sceneTexture;
+          uniforms.uHasSceneTex.value = 1.0;
+        }
+      } else {
+        sceneTexture.needsUpdate = true;
+      }
+
+      renderer.render(scene, camera);
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      if (sceneTexture) sceneTexture.dispose();
+      renderer.dispose();
+      material.dispose();
+    };
+  }, [radius, noShadow, isPill, sceneCanvasRef]);
+
+  const margin = 26;
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        borderRadius: 'inherit'
+      }}
+    >
+      <canvas
+        ref={canvasRef}
+        data-glass="true"
+        style={{
+          position: 'absolute',
+          top: -margin,
+          left: -margin,
+          width: `calc(100% + ${margin * 2}px)`,
+          height: `calc(100% + ${margin * 2}px)`,
+          display: 'block',
+          pointerEvents: 'none'
+        }}
+      />
+    </div>
+  );
+};
