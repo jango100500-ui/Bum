@@ -49,27 +49,32 @@ vec3 sampleBackground(vec2 px) {
     return defaultBg;
   }
 
-  vec2 basePx = uGlobalOffset + px;
-  float b = max(uBlur, 0.5) * 1.6;
+  vec2 globalPx = uGlobalOffset + px;
+  vec2 sceneUv = vec2(globalPx.x / uScreenResolution.x, 1.0 - (globalPx.y / uScreenResolution.y));
 
-  vec2 uv0 = vec2(basePx.x / uScreenResolution.x, 1.0 - (basePx.y / uScreenResolution.y));
-  vec2 uv1 = vec2((basePx.x + b) / uScreenResolution.x, 1.0 - ((basePx.y + b) / uScreenResolution.y));
-  vec2 uv2 = vec2((basePx.x - b) / uScreenResolution.x, 1.0 - ((basePx.y + b) / uScreenResolution.y));
-  vec2 uv3 = vec2((basePx.x + b) / uScreenResolution.x, 1.0 - ((basePx.y - b) / uScreenResolution.y));
-  vec2 uv4 = vec2((basePx.x - b) / uScreenResolution.x, 1.0 - ((basePx.y - b) / uScreenResolution.y));
-
-  if (uv0.x < 0.0 || uv0.x > 1.0 || uv0.y < 0.0 || uv0.y > 1.0) {
+  if (sceneUv.x < 0.0 || sceneUv.x > 1.0 || sceneUv.y < 0.0 || sceneUv.y > 1.0) {
     return defaultBg;
   }
 
-  vec4 c0 = texture2D(uSceneTex, uv0);
-  vec4 c1 = texture2D(uSceneTex, uv1);
-  vec4 c2 = texture2D(uSceneTex, uv2);
-  vec4 c3 = texture2D(uSceneTex, uv3);
-  vec4 c4 = texture2D(uSceneTex, uv4);
+  if (uBlur > 0.05) {
+    float b = uBlur * 1.6;
+    vec2 uv1 = vec2((globalPx.x + b) / uScreenResolution.x, 1.0 - ((globalPx.y + b) / uScreenResolution.y));
+    vec2 uv2 = vec2((globalPx.x - b) / uScreenResolution.x, 1.0 - ((globalPx.y + b) / uScreenResolution.y));
+    vec2 uv3 = vec2((globalPx.x + b) / uScreenResolution.x, 1.0 - ((globalPx.y - b) / uScreenResolution.y));
+    vec2 uv4 = vec2((globalPx.x - b) / uScreenResolution.x, 1.0 - ((globalPx.y - b) / uScreenResolution.y));
 
-  vec4 avgColor = c0 * 0.36 + (c1 + c2 + c3 + c4) * 0.16;
-  return mix(defaultBg, avgColor.rgb, avgColor.a);
+    vec4 c0 = texture2D(uSceneTex, sceneUv);
+    vec4 c1 = texture2D(uSceneTex, uv1);
+    vec4 c2 = texture2D(uSceneTex, uv2);
+    vec4 c3 = texture2D(uSceneTex, uv3);
+    vec4 c4 = texture2D(uSceneTex, uv4);
+
+    vec4 avgColor = c0 * 0.36 + (c1 + c2 + c3 + c4) * 0.16;
+    return mix(defaultBg, avgColor.rgb, avgColor.a);
+  }
+
+  vec4 sceneColor = texture2D(uSceneTex, sceneUv);
+  return mix(defaultBg, sceneColor.rgb, sceneColor.a);
 }
 
 void main() {
@@ -164,7 +169,7 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
   radius = 26,
   noShadow = false,
   isPill = true,
-  blur = 1.8,
+  blur = 0.0,
   sceneCanvasRef
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
