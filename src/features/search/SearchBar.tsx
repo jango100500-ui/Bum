@@ -34,7 +34,7 @@ export const SearchBar = () => {
         cursor: 'text'
       }}
     >
-      <LiquidGlass isPill={true} radius={26} blur={2.0} />
+      <LiquidGlass isPill={true} radius={26} blur={0.0} />
 
       <div
         style={{
