@@ -42,34 +42,34 @@ float surfaceHeight(float t) {
   return pow(1.0 - s * s * s * s, 0.25);
 }
 
-vec3 sampleScene(vec2 p) {
-  vec2 globalPx = uGlobalOffset + p;
-  vec2 sceneUv = vec2(globalPx.x / uScreenResolution.x, 1.0 - (globalPx.y / uScreenResolution.y));
+vec3 sampleBackground(vec2 px) {
+  vec3 defaultBg = vec3(0.949, 0.949, 0.969);
 
-  if (sceneUv.x < 0.0 || sceneUv.x > 1.0 || sceneUv.y < 0.0 || sceneUv.y > 1.0) {
-    return vec3(0.949, 0.949, 0.969);
-  }
-
-  vec4 sceneColor = texture2D(uSceneTex, sceneUv);
-  return mix(vec3(0.949, 0.949, 0.969), sceneColor.rgb, sceneColor.a);
-}
-
-vec3 sampleBackgroundWithBlur(vec2 px, vec2 offR, vec2 offG, vec2 offB, float b) {
   if (uHasSceneTex < 0.5) {
-    return vec3(0.949, 0.949, 0.969);
+    return defaultBg;
   }
 
-  vec3 c0 = sampleScene(px + offG);
-  vec3 c1 = sampleScene(px + offG + vec2(b, 0.0));
-  vec3 c2 = sampleScene(px + offG - vec2(b, 0.0));
-  vec3 c3 = sampleScene(px + offG + vec2(0.0, b));
-  vec3 c4 = sampleScene(px + offG - vec2(0.0, b));
-  vec3 blurred = c0 * 0.36 + (c1 + c2 + c3 + c4) * 0.16;
+  vec2 basePx = uGlobalOffset + px;
+  float b = max(uBlur, 0.5) * 1.6;
 
-  float r = sampleScene(px + offR).r;
-  float bCol = sampleScene(px + offB).b;
+  vec2 uv0 = vec2(basePx.x / uScreenResolution.x, 1.0 - (basePx.y / uScreenResolution.y));
+  vec2 uv1 = vec2((basePx.x + b) / uScreenResolution.x, 1.0 - ((basePx.y + b) / uScreenResolution.y));
+  vec2 uv2 = vec2((basePx.x - b) / uScreenResolution.x, 1.0 - ((basePx.y + b) / uScreenResolution.y));
+  vec2 uv3 = vec2((basePx.x + b) / uScreenResolution.x, 1.0 - ((basePx.y - b) / uScreenResolution.y));
+  vec2 uv4 = vec2((basePx.x - b) / uScreenResolution.x, 1.0 - ((basePx.y - b) / uScreenResolution.y));
 
-  return vec3(mix(blurred.r, r, 0.6), blurred.g, mix(blurred.b, bCol, 0.6));
+  if (uv0.x < 0.0 || uv0.x > 1.0 || uv0.y < 0.0 || uv0.y > 1.0) {
+    return defaultBg;
+  }
+
+  vec4 c0 = texture2D(uSceneTex, uv0);
+  vec4 c1 = texture2D(uSceneTex, uv1);
+  vec4 c2 = texture2D(uSceneTex, uv2);
+  vec4 c3 = texture2D(uSceneTex, uv3);
+  vec4 c4 = texture2D(uSceneTex, uv4);
+
+  vec4 avgColor = c0 * 0.36 + (c1 + c2 + c3 + c4) * 0.16;
+  return mix(defaultBg, avgColor.rgb, avgColor.a);
 }
 
 void main() {
@@ -83,8 +83,8 @@ void main() {
   float sd = sdRoundedRect(p, halfSize, safeRadius);
 
   if (sd > 0.0) {
-    float shadowFalloff = exp(-sd * sd / 180.0);
-    float shadowStrength = uIsPill > 0.5 ? 0.11 : uShadow * 0.35;
+    float shadowFalloff = exp(-sd * sd / 220.0);
+    float shadowStrength = uIsPill > 0.5 ? 0.038 : uShadow * 0.1;
     gl_FragColor = vec4(0.0, 0.0, 0.0, shadowStrength * shadowFalloff);
     return;
   }
@@ -117,33 +117,36 @@ void main() {
   vec2 offsetG = -grad * displacement;
   vec2 offsetB = -grad * (displacement * (1.0 - dispSpread));
 
-  vec3 color = sampleBackgroundWithBlur(screenPx, offsetR, offsetG, offsetB, uBlur);
+  float colR = sampleBackground(screenPx + offsetR).r;
+  float colG = sampleBackground(screenPx + offsetG).g;
+  float colB = sampleBackground(screenPx + offsetB).b;
+  vec3 color = vec3(colR, colG, colB);
 
   vec2 lightDir = normalize(vec2(0.5, -0.7));
   float rimDot = abs(dot(grad, lightDir));
-  float rimFalloff = 1.0 - smoothstep(0.0, bezel * 0.5, distFromEdge);
+  float rimFalloff = 1.0 - smoothstep(0.0, bezel * 0.45, distFromEdge);
   float specHighlight = pow(rimDot * rimFalloff, 1.5);
   color += vec3(specHighlight * uSpecular * uRimGlow);
 
-  float innerRim = smoothstep(0.15, 0.55, distFromEdge) * (1.0 - smoothstep(0.55, 1.05, distFromEdge));
+  float innerRim = smoothstep(0.35, 1.2, distFromEdge) * (1.0 - smoothstep(1.2, 2.1, distFromEdge));
   color += vec3(innerRim * 0.055 * uSpecular);
 
   float angle = atan(grad.y, grad.x) * 1.4;
   vec3 rainbow = 0.5 + 0.5 * cos(angle + vec3(0.0, 2.05, 4.1));
-  float rainbowStrength = (specHighlight * 0.55 + innerRim * 0.35) * uSpecular;
+  float rainbowStrength = (specHighlight * 0.65 + innerRim * 0.45) * uSpecular;
   color += rainbow * rainbowStrength;
 
-  float edgeLine = 1.0 - smoothstep(0.0, 0.75, distFromEdge);
+  float edgeLine = 1.0 - smoothstep(0.0, 1.45, distFromEdge);
   if (uIsPill > 0.5) {
-    vec3 pillContour = vec3(0.3, 0.3, 0.33);
-    color = mix(color, pillContour, edgeLine * 0.45);
+    vec3 pillContour = vec3(0.24, 0.24, 0.27);
+    color = mix(color, pillContour, edgeLine * 0.55);
   } else {
-    color += vec3(edgeLine * uSpecular * 0.3);
-    color += rainbow * (edgeLine * 0.22 * uSpecular);
+    color += vec3(edgeLine * uSpecular * 0.34);
+    color += rainbow * (edgeLine * 0.28 * uSpecular);
   }
 
   color = mix(color, vec3(1.0), uTint);
-  float alpha = smoothstep(0.0, 1.0, distFromEdge);
+  float alpha = smoothstep(0.0, 1.5, distFromEdge);
 
   gl_FragColor = vec4(color, alpha);
 }
@@ -153,6 +156,7 @@ interface LiquidGlassProps {
   radius?: number;
   noShadow?: boolean;
   isPill?: boolean;
+  blur?: number;
   sceneCanvasRef?: React.RefObject<HTMLCanvasElement>;
 }
 
@@ -160,6 +164,7 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
   radius = 26,
   noShadow = false,
   isPill = true,
+  blur = 1.8,
   sceneCanvasRef
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -196,14 +201,14 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
       uGlassCenter: { value: new THREE.Vector2(totalW / 2, totalH / 2) },
       uGlassSize: { value: new THREE.Vector2(baseW, baseH) },
       uRadius: { value: radius },
-      uThickness: { value: isPill ? 5.5 : 7.0 },
-      uBezel: { value: isPill ? 4.5 : 5.5 },
-      uIOR: { value: isPill ? 2.15 : 2.45 },
-      uBlur: { value: 2.8 },
-      uSpecular: { value: 0.48 },
+      uThickness: { value: isPill ? 22.0 : 24.0 },
+      uBezel: { value: isPill ? 17.0 : 20.0 },
+      uIOR: { value: isPill ? 2.35 : 2.70 },
+      uBlur: { value: blur },
+      uSpecular: { value: 0.52 },
       uRimGlow: { value: 0.03 },
-      uTint: { value: 0.08 },
-      uShadow: { value: noShadow ? 0.0 : 0.08 },
+      uTint: { value: 0.07 },
+      uShadow: { value: noShadow ? 0.0 : 0.02 },
       uIsPill: { value: isPill ? 1.0 : 0.0 },
       uSceneTex: { value: new THREE.Texture() },
       uScreenResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
@@ -274,7 +279,7 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
       renderer.dispose();
       material.dispose();
     };
-  }, [radius, noShadow, isPill, sceneCanvasRef]);
+  }, [radius, noShadow, isPill, blur, sceneCanvasRef]);
 
   const margin = 26;
 
