@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import Matter from 'matter-js';
-import { ALL_EMOJIS } from '@/shared/constants/emojis';
+import { ALL_EMOJIS } from '../../shared/constants/emojis';
 
 const { Engine, Runner, Bodies, Composite, Body } = Matter;
 
