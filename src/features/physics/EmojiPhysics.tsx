@@ -1,14 +1,98 @@
 import { useEffect, useRef } from 'react';
 import Matter from 'matter-js';
 
-const { Engine, Runner, Bodies, Composite, Body, Sleeping } = Matter;
+const { Engine, Bodies, Composite, Body } = Matter;
+
+const ALL_EMOJIS: string[] = [
+  "🤡", "🤠", "😈", "👿", "👽",
+  "👻", "💀", "☠️", "🤖", "🎃", "👾",
+  "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯",
+  "🦁", "🐮", "🐷", "🐸", "🐵", "🐔", "🐧", "🐦", "🦆", "🦅",
+  "🦉", "🦇", "🐺", "🐗", "🐴", "🦄", "🐝", "🐛", "🦋", "🐌",
+  "🐞", "🐜", "🦟", "🐢", "🐍", "🦎", "🐙", "🦑", "🦐", "🦞",
+  "🦀", "🐡", "🐠", "🐟", "🐬", "🐳", "🦈", "🐊", "🐅", "🐆",
+  "🦓", "🦍", "🦧", "🐘", "🦛", "🦏", "🐪", "🐫", "🦒", "🦘",
+  "🐃", "🐂", "🐄", "🐎", "🐖", "🐏", "🐑", "🦙", "🐐", "🦌",
+  "🐕", "🐩", "🦮", "🐕‍🦺", "🐈", "🐈‍⬛", "🐓", "🦃", "🦚", "🦜",
+  "🦢", "🦩", "🕊️", "🐇", "🦝", "🦨", "🦡", "🦦", "🦥", "🐁",
+  "🐀", "🐿️", "🦔", "🐉", "🐲", "🦖", "🦕", "🌵", "🎄", "🌲",
+  "🌳", "🌴", "🌱", "🌿", "☘️", "🍀", "🎍", "🎋", "🍃", "🍂",
+  "🍁", "🍄", "🌾", "💐", "🌷", "🌹", "🥀", "🌺", "🌸", "🌼",
+  "🌻", "🌞", "🌝", "🌛", "🌜", "🌚", "🌕", "🌖", "🌗", "🌘",
+  "🌑", "🌒", "🌓", "🌔", "🌙", "🌎", "🌍", "🌏", "🪐", "💫",
+  "⭐", "🌟", "✨", "⚡", "☄️", "💥", "🔥", "🌪️", "🌈", "☀️",
+  "🌤️", "⛅", "🌥️", "☁️", "🌦️", "🌧️", "🌨️", "🌩️", "❄️", "☃️",
+  "⛄", "🌬️", "💨", "💧", "💦", "🫧", "🌊", "🍏", "🍎", "🍐",
+  "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", "🍒", "🍑",
+  "🥭", "🍍", "🥥", "🥝", "🍅", "🍆", "🥑", "🥦", "🥬", "🥒",
+  "🌶️", "🫑", "🌽", "🥕", "🫒", "🧄", "🧅", "🥔", "🍠", "🥐",
+  "🥯", "🍞", "🥖", "🥨", "🧀", "🥚", "🍳", "🧈", "🥞", "🧇",
+  "🥓", "🥩", "🍗", "🍖", "🌭", "🍔", "🍟", "🍕", "🫓", "🥪",
+  "🥙", "🧆", "🌮", "🌯", "🫔", "🥗", "🥘", "🫕", "🥫", "🍝",
+  "🍜", "🍲", "🍛", "🍣", "🍱", "🥟", "🦪", "🍤", "🍙", "🍚",
+  "🍘", "🍥", "🍢", "🥠", "🥡", "🍦", "🍧", "🍨", "🍩", "🍪",
+  "🎂", "🍰", "🧁", "🥧", "🍫", "🍬", "🍭", "🍮", "🍯", "🍼",
+  "🥛", "☕", "🫖", "🍵", "🍶", "🍾", "🍷", "🍸", "🍹", "🍺",
+  "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🧃", "🧉", "🧊", "🥢",
+  "🍽️", "🍴", "🥄", "🏺", "⚽", "🏀", "🏈", "⚾", "🥎", "🎾",
+  "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
+  "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋",
+  "🎽", "🛹", "🛼", "🛷", "⛸️", "🥌", "🎿", "⛷️", "🏂", "🪂",
+  "🏋️", "🤼", "🤸", "🤺", "🧗", "🏇", "🚴", "🚵", "🏆", "🥇",
+  "🥈", "🥉", "🏅", "🎖️", "🏵️", "🎗️", "🎫", "🎟️", "🎪", "🤹",
+  "🎭", "🩰", "🎨", "🎬", "🎤", "🎧", "🎼", "🎹", "🥁", "🪘",
+  "🎷", "🎺", "🪗", "🎸", "🪕", "🎻", "🎲", "♟️", "🎯", "🎳",
+  "🎮", "🎰", "🧩", "🚗", "🚕", "🚙", "🚌", "🚎", "🏎️", "🚓",
+  "🚑", "🚒", "🚐", "🛻", "🚚", "🚛", "🚜", "🛴", "🚲", "🛵",
+  "🏍️", "🛺", "🚨", "🚔", "🚍", "🚘", "🚖", "🚡", "🚠", "🚟",
+  "🚃", "🚋", "🚞", "🚝", "🚄", "🚅", "🚈", "🚂", "🚆", "🚇",
+  "🚊", "🚉", "✈️", "🛫", "🛬", "🛩️", "💺", "🛰️", "🚀", "🛸",
+  "🚁", "🛶", "⛵", "🚤", "🛥️", "🛳️", "⛴️", "🚢", "⚓", "🛟",
+  "🪝", "⛽", "🚧", "🚦", "🚥", "🗺️", "🗿", "🗽", "🗼", "🏰",
+  "🏯", "🏟️", "🎡", "🎢", "🎠", "⛲", "⛱️", "🏖️", "🏝️", "🏜️",
+  "🌋", "⛰️", "🏔️", "🗻", "🏕️", "⛺", "🛖", "🏠", "🏡", "🏘️",
+  "🏚️", "🏗️", "🏭", "🏢", "🏬", "🏣", "🏤", "🏥", "🏦", "🏨",
+  "🏪", "🏫", "🏩", "💒", "🏛️", "⛪", "🕌", "🛕", "🕍", "⛩️",
+  "🕋", "⌚", "📱", "📲", "💻", "⌨️", "🖥️", "🖨️", "🖱️", "🕹️",
+  "🗜️", "💽", "💾", "💿", "📀", "📼", "📷", "📸", "📹", "🎥",
+  "📽️", "🎞️", "📞", "☎️", "📟", "📠", "📺", "📻", "🎙️", "🎚️",
+  "🎛️", "🧭", "⏱️", "⏲️", "⏰", "🕰️", "⌛", "⏳", "📡", "🔋",
+  "🪫", "🔌", "💡", "🔦", "🕯️", "🪔", "🧯", "🛢️", "💸", "💵",
+  "💴", "💶", "💷", "🪙", "💰", "💳", "💎", "⚖️", "🪜", "🧰",
+  "🪛", "🔧", "🔨", "⚒️", "🛠️", "⛏️", "🪚", "🔩", "⚙️", "🪤",
+  "🧱", "⛓️", "🧲", "🔫", "💣", "🧨", "🪓", "🔪", "🗡️", "⚔️",
+  "🛡️", "🚬", "⚰️", "🪦", "⚱️", "🔮", "📿", "🧿", "🪬", "💈",
+  "⚗️", "🔭", "🔬", "🕳️", "🩹", "🩺", "💊", "💉", "🩸", "🧬",
+  "🦠", "🧫", "🧪", "🌡️", "🧹", "🪠", "🧺", "🧻", "🚽", "🚰",
+  "🚿", "🛁", "🧼", "🪥", "🪒", "🧽", "🪣", "🧴", "🔑", "🗝️",
+  "🚪", "🪑", "🛋️", "🛏️", "🛌", "🧸", "🪆", "🖼️", "🪞", "🪟",
+  "🛍️", "🛒", "🎁", "🎈", "🎏", "🎀", "🪄", "🪅", "🎊", "🎉",
+  "🎎", "🏮", "🎐", "🧧", "✉️", "📩", "📨", "📧", "💌", "📮",
+  "📯", "📦", "🏷️", "🪪", "📄", "📃", "📑", "📊", "📈", "📉",
+  "🗒️", "🗓️", "📆", "📅", "📇", "🗃️", "🗳️", "🗄️", "📋", "📁",
+  "📂", "🗂️", "🗞️", "📰", "📓", "📕", "📗", "📘", "📙", "📚",
+  "📖", "🔖", "🧷", "🔗", "📎", "🖇️", "📐", "📏", "🧮", "📌",
+  "📍", "✂️", "🖊️", "🖋️", "✒️", "🖌️", "🖍️", "📝", "✏️", "🔍",
+  "🔎", "🔏", "🔐", "🔒", "🔓", "❤️", "🧡", "💛", "💚", "💙",
+  "💜", "🖤", "🤍", "🤎", "💔", "❤️‍🔥", "❤️‍🩹", "❣️", "💕", "💞",
+  "💓", "💗", "💖", "💘", "💝", "💟", "☮️", "✝️", "☪️", "🕉️",
+  "☸️", "✡️", "🔯", "🕎", "☯️", "☦️", "🛐", "⛎", "♈", "♉",
+  "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓",
+  "🆔", "⚛️", "☣️", "☢️", "📴", "📳", "🈶", "🈚", "🈸", "🈺",
+  "🈷️", "✴️", "💮", "🉐", "㊙️", "㊗️", "🈴", "🈵", "🈹", "🈲",
+  "🅰️", "🅱️", "🆎", "🆑", "🅾️", "🆘", "❌", "⭕", "🛑", "⛔",
+  "📛", "🚫", "💯", "💢", "♨️", "🚷", "🚯", "🚳", "🚱", "🔞",
+  "📵", "🚭", "❗", "❕", "❓", "❔", "‼️", "⁉️", "🔅", "🔆",
+  "〽️", "⚠️", "🚸", "🔱", "⚜️", "🔰", "♻️", "✅", "🈯", "💹",
+  "❇️", "✳️", "❎", "🌐", "💠", "Ⓜ️", "🌀", "💤", "🏧"
+];
 
 const EMOJI_SIZE = 26;
 const BODY_RADIUS = 13;
-const SPAWN_INTERVAL_MS = 18;
+const SPAWN_INTERVAL_MS = 20;
 const SPAWN_BATCH = 3;
-const DROP_DELAY_MS = 500;
-const WALL_THICKNESS = 150;
+const DROP_DELAY_MS = 300;
+const WALL_THICKNESS = 200;
 
 interface EmojiItem {
   body: Matter.Body;
@@ -21,7 +105,7 @@ const getOptimalEmojiCount = (width: number, height: number): number => {
     ? navigator.hardwareConcurrency
     : 4;
 
-  let baseCount = Math.round(area / 1800);
+  let baseCount = Math.round(area / 1750);
 
   if (cores <= 2) {
     baseCount = Math.round(baseCount * 0.65);
@@ -31,11 +115,11 @@ const getOptimalEmojiCount = (width: number, height: number): number => {
     baseCount = Math.round(baseCount * 1.25);
   }
 
-  return Math.max(90, Math.min(baseCount, 280));
+  return Math.max(90, Math.min(baseCount, 260));
 };
 
-const getRandomEmojis = (sourceList: string[], count: number): string[] => {
-  const shuffled = [...sourceList].sort(() => Math.random() - 0.5);
+const getRandomEmojis = (count: number): string[] => {
+  const shuffled = [...ALL_EMOJIS].sort(() => Math.random() - 0.5);
   const result: string[] = [];
   while (result.length < count) {
     const pick = shuffled[result.length % shuffled.length];
@@ -66,19 +150,16 @@ export const EmojiPhysics = () => {
     canvas.style.height = `${height}px`;
 
     const engine = Engine.create({
-      enableSleeping: true,
-      positionIterations: 8,
-      velocityIterations: 8,
-      gravity: { x: 0, y: 1.1, scale: 0.001 }
+      enableSleeping: false,
+      positionIterations: 10,
+      velocityIterations: 10,
+      gravity: { x: 0, y: 1.2, scale: 0.001 }
     });
-
-    const runner = Runner.create();
-    Runner.run(runner, engine);
 
     const ground = Bodies.rectangle(
       width / 2,
       height + WALL_THICKNESS / 2,
-      width * 2,
+      width * 3,
       WALL_THICKNESS,
       { isStatic: true, friction: 0.8, restitution: 0.05 }
     );
@@ -87,7 +168,7 @@ export const EmojiPhysics = () => {
       -WALL_THICKNESS / 2,
       height / 2,
       WALL_THICKNESS,
-      height * 3,
+      height * 4,
       { isStatic: true, friction: 0.1, restitution: 0.1 }
     );
 
@@ -95,18 +176,22 @@ export const EmojiPhysics = () => {
       width + WALL_THICKNESS / 2,
       height / 2,
       WALL_THICKNESS,
-      height * 3,
+      height * 4,
       { isStatic: true, friction: 0.1, restitution: 0.1 }
     );
 
     Composite.add(engine.world, [ground, leftWall, rightWall]);
 
     const activeList: EmojiItem[] = [];
+    const pool = getRandomEmojis(totalCount);
+
     let animationFrameId: number;
     let spawnTimerId: number;
     let startTimeoutId: number;
 
     const render = () => {
+      Engine.update(engine, 1000 / 60);
+
       ctx.save();
       ctx.scale(dpr, dpr);
       ctx.fillStyle = '#f2f2f7';
@@ -134,7 +219,7 @@ export const EmojiPhysics = () => {
 
     animationFrameId = requestAnimationFrame(render);
 
-    const startSpawning = (pool: string[]) => {
+    const startSpawning = () => {
       let index = 0;
 
       spawnTimerId = window.setInterval(() => {
@@ -149,15 +234,19 @@ export const EmojiPhysics = () => {
           const emoji = pool[index];
           const padding = 24;
           const x = padding + Math.random() * (width - padding * 2);
-          const y = -BODY_RADIUS * 2 - Math.random() * 60;
+          const y = -BODY_RADIUS - Math.random() * 40;
 
           const body = Bodies.circle(x, y, BODY_RADIUS, {
-            restitution: 0.1,
-            friction: 0.5,
-            frictionAir: 0.02,
-            frictionStatic: 0.8,
-            density: 0.002,
-            sleepThreshold: 25
+            restitution: 0.05,
+            friction: 0.7,
+            frictionAir: 0.025,
+            frictionStatic: 0.9,
+            density: 0.002
+          });
+
+          Body.setVelocity(body, {
+            x: (Math.random() - 0.5) * 1.5,
+            y: 2.0 + Math.random() * 2.5
           });
 
           Composite.add(engine.world, body);
@@ -167,16 +256,7 @@ export const EmojiPhysics = () => {
       }, SPAWN_INTERVAL_MS);
     };
 
-    fetch('/emojis.json')
-      .then((res) => res.json())
-      .then((data: string[]) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-        const pool = getRandomEmojis(data, totalCount);
-        startTimeoutId = window.setTimeout(() => {
-          startSpawning(pool);
-        }, DROP_DELAY_MS);
-      })
-      .catch(() => {});
+    startTimeoutId = window.setTimeout(startSpawning, DROP_DELAY_MS);
 
     const handleOrientation = (e: DeviceOrientationEvent) => {
       if (e.gamma === null || e.beta === null) return;
@@ -186,12 +266,6 @@ export const EmojiPhysics = () => {
 
       engine.gravity.x = tiltX;
       engine.gravity.y = tiltY;
-
-      for (let i = 0; i < activeList.length; i++) {
-        if (activeList[i].body.isSleeping) {
-          Sleeping.set(activeList[i].body, false);
-        }
-      }
     };
 
     const enableOrientation = async () => {
@@ -252,13 +326,13 @@ export const EmojiPhysics = () => {
       clearTimeout(startTimeoutId);
       clearInterval(spawnTimerId);
       cancelAnimationFrame(animationFrameId);
-      Runner.stop(runner);
       Engine.clear(engine);
     };
   }, []);
 
   return (
     <canvas
+      id="emoji-canvas"
       ref={canvasRef}
       style={{
         display: 'block',
