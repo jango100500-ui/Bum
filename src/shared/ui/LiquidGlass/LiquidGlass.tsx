@@ -129,11 +129,11 @@ void main() {
 
   vec2 lightDir = normalize(vec2(0.5, -0.7));
   float rimDot = abs(dot(grad, lightDir));
-  float rimFalloff = 1.0 - smoothstep(0.0, max(bezel * 0.5, 1.0), distFromEdge);
+  float rimFalloff = 1.0 - smoothstep(0.0, bezel * 0.45, distFromEdge);
   float specHighlight = pow(rimDot * rimFalloff, 1.5);
   color += vec3(specHighlight * uSpecular * uRimGlow);
 
-  float innerRim = smoothstep(0.2, 0.8, distFromEdge) * (1.0 - smoothstep(0.8, max(bezel, 1.5), distFromEdge));
+  float innerRim = smoothstep(0.35, 1.2, distFromEdge) * (1.0 - smoothstep(1.2, 2.1, distFromEdge));
   color += vec3(innerRim * 0.055 * uSpecular);
 
   float angle = atan(grad.y, grad.x) * 1.4;
@@ -141,7 +141,7 @@ void main() {
   float rainbowStrength = (specHighlight * 0.65 + innerRim * 0.45) * uSpecular;
   color += rainbow * rainbowStrength;
 
-  float edgeLine = 1.0 - smoothstep(0.0, 1.0, distFromEdge);
+  float edgeLine = 1.0 - smoothstep(0.0, 1.45, distFromEdge);
   if (uIsPill > 0.5) {
     vec3 pillContour = vec3(0.24, 0.24, 0.27);
     color = mix(color, pillContour, edgeLine * 0.55);
@@ -169,8 +169,8 @@ interface LiquidGlassProps {
 
 export const LiquidGlass: React.FC<LiquidGlassProps> = ({
   radius = 26,
-  bezel = 4.5,
-  thickness = 20.0,
+  bezel = 17.0,
+  thickness = 22.0,
   noShadow = false,
   isPill = true,
   blur = 0.0,
@@ -262,7 +262,6 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
 
       if (!sceneTexture) {
         const bgCanvas = (sceneCanvasRef?.current ||
-          document.getElementById('emoji-canvas') ||
           document.querySelector('canvas:not([data-glass="true"])')) as HTMLCanvasElement | null;
 
         if (bgCanvas && bgCanvas.width > 0 && bgCanvas.height > 0) {
@@ -277,10 +276,7 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
         sceneTexture.needsUpdate = true;
       }
 
-      try {
-        renderer.render(scene, camera);
-      } catch {}
-
+      renderer.render(scene, camera);
       animationFrameId = requestAnimationFrame(render);
     };
 
