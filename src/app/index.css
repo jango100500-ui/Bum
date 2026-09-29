@@ -24,7 +24,7 @@ body,
   height: 100dvh;
   overflow: hidden;
   position: fixed;
-  background-color: #f2f2f7;
+  background-color: #0c0c0e;
   touch-action: none;
   overscroll-behavior: none;
 }
@@ -34,13 +34,24 @@ video {
   pointer-events: none;
 }
 
-@keyframes placeholderFadeSlide {
+@keyframes placeholderSlideInTop {
   0% {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(-16px);
   }
   100% {
     opacity: 0.55;
     transform: translateY(0);
+  }
+}
+
+@keyframes placeholderSlideOutBottom {
+  0% {
+    opacity: 0.55;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(16px);
   }
 }
