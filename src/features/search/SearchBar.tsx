@@ -1,8 +1,9 @@
-import { useState, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent } from 'react';
 import { LiquidGlass } from '../../shared/ui/LiquidGlass/LiquidGlass';
 
 export const SearchBar = () => {
   const [value, setValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
@@ -10,10 +11,16 @@ export const SearchBar = () => {
 
   const handleClear = () => {
     setValue('');
+    inputRef.current?.focus();
+  };
+
+  const handleContainerClick = () => {
+    inputRef.current?.focus();
   };
 
   return (
     <div
+      onClick={handleContainerClick}
       style={{
         position: 'fixed',
         top: 'calc(env(safe-area-inset-top, 0px) + 16px)',
@@ -23,10 +30,11 @@ export const SearchBar = () => {
         maxWidth: 540,
         height: 52,
         borderRadius: 9999,
-        zIndex: 10
+        zIndex: 10,
+        cursor: 'text'
       }}
     >
-      <LiquidGlass isPill={true} radius={26} />
+      <LiquidGlass isPill={true} radius={26} blur={2.0} />
 
       <div
         style={{
@@ -43,17 +51,20 @@ export const SearchBar = () => {
         <img
           src="/search.png"
           alt=""
-          width={18}
-          height={18}
+          width="18"
+          height="18"
           style={{
-            flexShrink: 0,
+            width: 18,
+            height: 18,
             objectFit: 'contain',
-            pointerEvents: 'none',
-            opacity: 0.65
+            flexShrink: 0,
+            opacity: 0.55,
+            pointerEvents: 'none'
           }}
         />
 
         <input
+          ref={inputRef}
           type="text"
           value={value}
           onChange={handleChange}
@@ -70,7 +81,10 @@ export const SearchBar = () => {
             fontSize: 16,
             color: '#1c1c1e',
             fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-            WebkitAppearance: 'none'
+            WebkitAppearance: 'none',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden'
           }}
         />
 
