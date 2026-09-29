@@ -15,16 +15,27 @@ interface SearchBarProps {
 
 export const SearchBar = ({ onOpenMenu }: SearchBarProps) => {
   const [value, setValue] = useState('');
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [prevIdx, setPrevIdx] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDERS.length);
-    }, 4500);
+      setPrevIdx(currentIdx);
+      setCurrentIdx((prev) => (prev + 1) % PLACEHOLDERS.length);
+    }, 5500);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [currentIdx]);
+
+  useEffect(() => {
+    if (prevIdx !== null) {
+      const clearTimer = window.setTimeout(() => {
+        setPrevIdx(null);
+      }, 1100);
+      return () => clearTimeout(clearTimer);
+    }
+  }, [prevIdx]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
@@ -70,10 +81,11 @@ export const SearchBar = ({ onOpenMenu }: SearchBarProps) => {
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
-          flexShrink: 0
+          flexShrink: 0,
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.06)'
         }}
       >
-        <LiquidGlass isPill={false} radius={26} bezel={4.5} thickness={20.0} blur={0.0} />
+        <LiquidGlass isPill={false} radius={26} blur={0.0} />
 
         <img
           src="/menu.png"
@@ -100,10 +112,11 @@ export const SearchBar = ({ onOpenMenu }: SearchBarProps) => {
           flex: 1,
           height: 52,
           borderRadius: 9999,
-          cursor: 'text'
+          cursor: 'text',
+          boxShadow: '0 4px 18px rgba(0, 0, 0, 0.05)'
         }}
       >
-        <LiquidGlass isPill={true} radius={26} bezel={4.5} thickness={20.0} blur={0.0} />
+        <LiquidGlass isPill={true} radius={26} blur={0.0} />
 
         <div
           style={{
@@ -133,26 +146,62 @@ export const SearchBar = ({ onOpenMenu }: SearchBarProps) => {
             }}
           />
 
-          <div style={{ position: 'relative', flex: 1, height: '100%', display: 'flex', alignItems: 'center' }}>
+          <div
+            style={{
+              position: 'relative',
+              flex: 1,
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              overflow: 'hidden'
+            }}
+          >
             {value.length === 0 && (
-              <span
-                key={placeholderIndex}
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  color: '#1c1c1e',
-                  fontSize: 16,
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  pointerEvents: 'none',
-                  animation: 'placeholderFadeSlide 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards'
-                }}
-              >
-                {PLACEHOLDERS[placeholderIndex]}
-              </span>
+              <>
+                {prevIdx !== null && (
+                  <span
+                    key={`prev-${prevIdx}`}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      color: '#1c1c1e',
+                      fontSize: 16,
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      pointerEvents: 'none',
+                      animation: 'placeholderSlideOutBottom 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                    }}
+                  >
+                    {PLACEHOLDERS[prevIdx]}
+                  </span>
+                )}
+
+                <span
+                  key={`curr-${currentIdx}`}
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    color: '#1c1c1e',
+                    fontSize: 16,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    pointerEvents: 'none',
+                    animation:
+                      prevIdx !== null
+                        ? 'placeholderSlideInTop 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                        : 'none',
+                    opacity: prevIdx !== null ? undefined : 0.55
+                  }}
+                >
+                  {PLACEHOLDERS[currentIdx]}
+                </span>
+              </>
             )}
 
             <input
