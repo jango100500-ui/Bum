@@ -169,8 +169,8 @@ interface LiquidGlassProps {
 
 export const LiquidGlass: React.FC<LiquidGlassProps> = ({
   radius = 26,
-  bezel = 17.0,
-  thickness = 22.0,
+  bezel,
+  thickness,
   noShadow = false,
   isPill = true,
   blur = 0.0,
@@ -178,6 +178,9 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const activeBezel = bezel ?? (isPill ? 17.0 : 20.0);
+  const activeThickness = thickness ?? (isPill ? 22.0 : 24.0);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -210,14 +213,14 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
       uGlassCenter: { value: new THREE.Vector2(totalW / 2, totalH / 2) },
       uGlassSize: { value: new THREE.Vector2(baseW, baseH) },
       uRadius: { value: radius },
-      uThickness: { value: thickness },
-      uBezel: { value: bezel },
+      uThickness: { value: activeThickness },
+      uBezel: { value: activeBezel },
       uIOR: { value: isPill ? 2.35 : 2.70 },
       uBlur: { value: blur },
       uSpecular: { value: 0.52 },
       uRimGlow: { value: 0.03 },
       uTint: { value: 0.07 },
-      uShadow: { value: noShadow ? 0.0 : 0.02 },
+      uShadow: { value: noShadow ? 0.0 : 0.035 },
       uIsPill: { value: isPill ? 1.0 : 0.0 },
       uSceneTex: { value: new THREE.Texture() },
       uScreenResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
@@ -288,7 +291,7 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
       renderer.dispose();
       material.dispose();
     };
-  }, [radius, bezel, thickness, noShadow, isPill, blur, sceneCanvasRef]);
+  }, [radius, activeBezel, activeThickness, noShadow, isPill, blur, sceneCanvasRef]);
 
   const margin = 26;
 
