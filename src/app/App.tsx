@@ -1,4 +1,4 @@
-import { EmojiPhysics } from '@/features/physics/EmojiPhysics';
+import { EmojiPhysics } from '../features/physics/EmojiPhysics';
 
 export const App = () => {
   return (
