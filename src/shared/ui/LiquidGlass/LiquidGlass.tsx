@@ -129,11 +129,11 @@ void main() {
 
   vec2 lightDir = normalize(vec2(0.5, -0.7));
   float rimDot = abs(dot(grad, lightDir));
-  float rimFalloff = 1.0 - smoothstep(0.0, bezel * 0.45, distFromEdge);
+  float rimFalloff = 1.0 - smoothstep(0.0, max(bezel * 0.5, 1.0), distFromEdge);
   float specHighlight = pow(rimDot * rimFalloff, 1.5);
   color += vec3(specHighlight * uSpecular * uRimGlow);
 
-  float innerRim = smoothstep(0.35, 1.2, distFromEdge) * (1.0 - smoothstep(1.2, 2.1, distFromEdge));
+  float innerRim = smoothstep(0.2, 0.8, distFromEdge) * (1.0 - smoothstep(0.8, max(bezel, 1.5), distFromEdge));
   color += vec3(innerRim * 0.055 * uSpecular);
 
   float angle = atan(grad.y, grad.x) * 1.4;
@@ -141,7 +141,7 @@ void main() {
   float rainbowStrength = (specHighlight * 0.65 + innerRim * 0.45) * uSpecular;
   color += rainbow * rainbowStrength;
 
-  float edgeLine = 1.0 - smoothstep(0.0, 1.45, distFromEdge);
+  float edgeLine = 1.0 - smoothstep(0.0, 1.0, distFromEdge);
   if (uIsPill > 0.5) {
     vec3 pillContour = vec3(0.24, 0.24, 0.27);
     color = mix(color, pillContour, edgeLine * 0.55);
@@ -159,6 +159,8 @@ void main() {
 
 interface LiquidGlassProps {
   radius?: number;
+  bezel?: number;
+  thickness?: number;
   noShadow?: boolean;
   isPill?: boolean;
   blur?: number;
@@ -167,6 +169,8 @@ interface LiquidGlassProps {
 
 export const LiquidGlass: React.FC<LiquidGlassProps> = ({
   radius = 26,
+  bezel = 4.5,
+  thickness = 20.0,
   noShadow = false,
   isPill = true,
   blur = 0.0,
@@ -206,8 +210,8 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
       uGlassCenter: { value: new THREE.Vector2(totalW / 2, totalH / 2) },
       uGlassSize: { value: new THREE.Vector2(baseW, baseH) },
       uRadius: { value: radius },
-      uThickness: { value: isPill ? 22.0 : 24.0 },
-      uBezel: { value: isPill ? 17.0 : 20.0 },
+      uThickness: { value: thickness },
+      uBezel: { value: bezel },
       uIOR: { value: isPill ? 2.35 : 2.70 },
       uBlur: { value: blur },
       uSpecular: { value: 0.52 },
@@ -284,7 +288,7 @@ export const LiquidGlass: React.FC<LiquidGlassProps> = ({
       renderer.dispose();
       material.dispose();
     };
-  }, [radius, noShadow, isPill, blur, sceneCanvasRef]);
+  }, [radius, bezel, thickness, noShadow, isPill, blur, sceneCanvasRef]);
 
   const margin = 26;
 
