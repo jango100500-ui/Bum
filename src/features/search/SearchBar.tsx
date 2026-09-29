@@ -34,7 +34,7 @@ export const SearchBar = () => {
         cursor: 'text'
       }}
     >
-      <LiquidGlass isPill={true} radius={26} blur={0.0} />
+      <LiquidGlass isPill={true} radius={26} bezel={4.5} thickness={20.0} blur={0.0} />
 
       <div
         style={{
@@ -58,7 +58,8 @@ export const SearchBar = () => {
             height: 18,
             objectFit: 'contain',
             flexShrink: 0,
-            opacity: 0.55,
+            opacity: 0.85,
+            filter: 'brightness(0)',
             pointerEvents: 'none'
           }}
         />
@@ -99,7 +100,7 @@ export const SearchBar = () => {
               width: 20,
               height: 20,
               borderRadius: '50%',
-              backgroundColor: '#8e8e9380',
+              backgroundColor: '#1c1c1e1f',
               border: 'none',
               padding: 0,
               cursor: 'pointer',
@@ -111,7 +112,7 @@ export const SearchBar = () => {
               height="10"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#ffffff"
+              stroke="#1c1c1e"
               strokeWidth="3.5"
               strokeLinecap="round"
             >
