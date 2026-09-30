@@ -35,7 +35,7 @@ export const ALL_EMOJIS: string[] = [
   "🥛", "☕", "🫖", "🍵", "🍶", "🍾", "🍷", "🍸", "🍹", "🍺",
   "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🧃", "🧉", "🧊", "🥢",
   "🍽️", "🍴", "🥄", "🏺", "⚽", "🏀", "🏈", "⚾", "🥎", "🎾",
-  "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
+  "🏐", "🏐", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
   "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋",
   "🎽", "🛹", "🛼", "🛷", "⛸️", "🥌", "🎿", "⛷️", "🏂", "🪂",
   "🏋️", "🤼", "🤸", "🤺", "🧗", "🏇", "🚴", "🚵", "🏆", "🥇",
@@ -213,6 +213,7 @@ export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
       const now = Date.now();
       const targetCenterY = height * 0.43;
       const slotGap = 52;
+      const MAX_LIFT_SPEED = 9;
 
       for (let i = 0; i < activeList.length; i++) {
         const item = activeList[i];
@@ -225,20 +226,25 @@ export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
 
           const dx = targetX - item.body.position.x;
           const dy = targetY - item.body.position.y;
-          const dist = Math.hypot(dx, dy);
 
-          if (dist > 1.5) {
-            Body.setVelocity(item.body, {
-              x: dx * 0.13,
-              y: dy * 0.13
-            });
+          let vx = dx * 0.052;
+          let vy = dy * 0.052;
+
+          const speed = Math.hypot(vx, vy);
+          if (speed > MAX_LIFT_SPEED) {
+            vx = (vx / speed) * MAX_LIFT_SPEED;
+            vy = (vy / speed) * MAX_LIFT_SPEED;
+          }
+
+          if (Math.hypot(dx, dy) > 1.2) {
+            Body.setVelocity(item.body, { x: vx, y: vy });
           } else {
             Body.setVelocity(item.body, { x: 0, y: 0 });
             Body.setPosition(item.body, { x: targetX, y: targetY });
           }
 
-          Body.setAngularVelocity(item.body, -item.body.angle * 0.18);
-          item.scale += (1.45 - item.scale) * 0.09;
+          Body.setAngularVelocity(item.body, -item.body.angle * 0.08);
+          item.scale += (1.45 - item.scale) * 0.045;
         }
 
         const { x, y } = item.body.position;
