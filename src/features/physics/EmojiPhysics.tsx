@@ -87,9 +87,9 @@ const ALL_EMOJIS: string[] = [
   "❇️", "✳️", "❎", "🌐", "💠", "Ⓜ️", "🌀", "💤", "🏧"
 ];
 
-const EMOJI_SIZE = 26;
-const BODY_RADIUS = 13;
-const SPAWN_INTERVAL_MS = 28;
+const EMOJI_SIZE = 36;
+const BODY_RADIUS = 18;
+const SPAWN_INTERVAL_MS = 32;
 const SPAWN_BATCH = 2;
 const DROP_DELAY_MS = 450;
 const WALL_THICKNESS = 150;
@@ -105,7 +105,7 @@ const getOptimalEmojiCount = (width: number, height: number): number => {
     ? navigator.hardwareConcurrency
     : 4;
 
-  let baseCount = Math.round(area / 4400);
+  let baseCount = Math.round(area / 6200);
 
   if (cores <= 2) {
     baseCount = Math.round(baseCount * 0.7);
@@ -113,7 +113,7 @@ const getOptimalEmojiCount = (width: number, height: number): number => {
     baseCount = Math.round(baseCount * 1.15);
   }
 
-  return Math.max(50, Math.min(baseCount, 85));
+  return Math.max(38, Math.min(baseCount, 65));
 };
 
 const getRandomEmojis = (count: number): string[] => {
@@ -151,7 +151,7 @@ export const EmojiPhysics = () => {
       enableSleeping: true,
       positionIterations: 6,
       velocityIterations: 6,
-      gravity: { x: 0, y: 1.1, scale: 0.001 }
+      gravity: { x: 0, y: 1.15, scale: 0.001 }
     });
 
     const runner = Runner.create();
@@ -231,7 +231,7 @@ export const EmojiPhysics = () => {
 
         for (let i = 0; i < toSpawn; i++) {
           const emoji = pool[index];
-          const padding = 24;
+          const padding = 28;
           const x = padding + Math.random() * (width - padding * 2);
           const y = -BODY_RADIUS * 2 - Math.random() * 50;
 
