@@ -1,27 +1,26 @@
 import { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { LiquidGlass } from '../../shared/ui/LiquidGlass/LiquidGlass';
+import { TITLES } from './titles';
 
-const PLACEHOLDERS: string[] = [
-  'Фильмы, сериалы, мультфильмы…',
-  'Интерстеллар, Начало…',
-  'Во все тяжкие, Лучше звоните Солу…',
-  'Унесённые призраками, Ходячий замок…',
-  'Джентльмены, Карты, деньги, два ствола…',
-  'Оппенгеймер, Дюна…',
-  'Очень странные дела, Черное зеркало…',
-  'Король Лев, Тайна Коко…'
-];
+const getRandomIndex = (excludeIndex: number): number => {
+  if (TITLES.length <= 1) return 0;
+  let next = Math.floor(Math.random() * TITLES.length);
+  while (next === excludeIndex) {
+    next = Math.floor(Math.random() * TITLES.length);
+  }
+  return next;
+};
 
 export const SearchBar = () => {
   const [value, setValue] = useState('');
-  const [currentIdx, setCurrentIdx] = useState(0);
+  const [currentIdx, setCurrentIdx] = useState(() => Math.floor(Math.random() * TITLES.length));
   const [incomingIdx, setIncomingIdx] = useState<number | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      const nextIdx = (currentIdx + 1) % PLACEHOLDERS.length;
+      const nextIdx = getRandomIndex(currentIdx);
       setIncomingIdx(nextIdx);
       setIsAnimating(false);
 
@@ -30,7 +29,7 @@ export const SearchBar = () => {
           setIsAnimating(true);
         });
       });
-    }, 5500);
+    }, 4500);
 
     return () => clearInterval(timer);
   }, [currentIdx]);
@@ -149,7 +148,7 @@ export const SearchBar = () => {
                       : 'none'
                   }}
                 >
-                  {PLACEHOLDERS[incomingIdx]}
+                  {TITLES[incomingIdx]}
                 </div>
               )}
 
@@ -178,7 +177,7 @@ export const SearchBar = () => {
                     : 'none'
                 }}
               >
-                {PLACEHOLDERS[currentIdx]}
+                {TITLES[currentIdx]}
               </div>
             </div>
           )}
