@@ -106,6 +106,7 @@ interface EmojiItem {
 
 interface EmojiPhysicsProps {
   combo?: string[] | null;
+  fromTop?: boolean;
 }
 
 const getOptimalEmojiCount = (width: number, height: number): number => {
@@ -135,9 +136,10 @@ const getRandomEmojis = (count: number): string[] => {
   return result;
 };
 
-export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
+export const EmojiPhysics = ({ combo, fromTop = false }: EmojiPhysicsProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const itemsRef = useRef<EmojiItem[]>([]);
+  const engineRef = useRef<Matter.Engine | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -163,6 +165,7 @@ export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
       velocityIterations: 6,
       gravity: { x: 0, y: 1.15, scale: 0.001 }
     });
+    engineRef.current = engine;
 
     const runner = Runner.create();
     Runner.run(runner, engine);
@@ -398,40 +401,75 @@ export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
 
   useEffect(() => {
     const list = itemsRef.current;
-    if (!list || list.length === 0) return;
+    const engine = engineRef.current;
+    if (!list || !engine) return;
 
     if (combo && combo.length > 0) {
-      const chosenItems: EmojiItem[] = [];
+      if (fromTop) {
+        const width = window.innerWidth || 390;
+        const slotGap = 52;
+        const total = combo.length;
 
-      for (let i = 0; i < combo.length; i++) {
-        const targetEmoji = combo[i];
-        let found = list.find((item) => !item.isLifted && !chosenItems.includes(item) && item.emoji === targetEmoji);
+        for (let i = 0; i < total; i++) {
+          const targetX = width / 2 + (i - (total - 1) / 2) * slotGap;
+          const spawnY = -BODY_RADIUS * 2 - i * 40;
 
-        if (!found) {
-          const poolCandidates = list
-            .filter((item) => !item.isLifted && !chosenItems.includes(item))
-            .sort((a, b) => b.body.position.y - a.body.position.y);
+          const body = Bodies.circle(targetX, spawnY, BODY_RADIUS, {
+            restitution: 0.1,
+            friction: 0.5,
+            frictionAir: 0.02,
+            frictionStatic: 0.8,
+            density: 0.002
+          });
 
-          if (poolCandidates.length > 0) {
-            found = poolCandidates[0];
-            found.emoji = targetEmoji;
+          body.collisionFilter.mask = 0x0000;
+          Body.setVelocity(body, { x: 0, y: 8 });
+
+          Composite.add(engine.world, body);
+
+          list.push({
+            body,
+            emoji: combo[i],
+            isLifted: true,
+            slotIndex: i,
+            totalSlots: total,
+            scale: 1.0,
+            liftStartTime: Date.now()
+          });
+        }
+      } else {
+        const chosenItems: EmojiItem[] = [];
+
+        for (let i = 0; i < combo.length; i++) {
+          const targetEmoji = combo[i];
+          let found = list.find((item) => !item.isLifted && !chosenItems.includes(item) && item.emoji === targetEmoji);
+
+          if (!found) {
+            const poolCandidates = list
+              .filter((item) => !item.isLifted && !chosenItems.includes(item))
+              .sort((a, b) => b.body.position.y - a.body.position.y);
+
+            if (poolCandidates.length > 0) {
+              found = poolCandidates[0];
+              found.emoji = targetEmoji;
+            }
+          }
+
+          if (found) {
+            chosenItems.push(found);
           }
         }
 
-        if (found) {
-          chosenItems.push(found);
+        for (let i = 0; i < chosenItems.length; i++) {
+          const item = chosenItems[i];
+          item.isLifted = true;
+          item.slotIndex = i;
+          item.totalSlots = chosenItems.length;
+          item.liftStartTime = Date.now();
+          item.body.collisionFilter.mask = 0xFFFFFFFF;
+          item.body.collisionFilter.group = 0;
+          Sleeping.set(item.body, false);
         }
-      }
-
-      for (let i = 0; i < chosenItems.length; i++) {
-        const item = chosenItems[i];
-        item.isLifted = true;
-        item.slotIndex = i;
-        item.totalSlots = chosenItems.length;
-        item.liftStartTime = Date.now();
-        item.body.collisionFilter.mask = 0xFFFFFFFF;
-        item.body.collisionFilter.group = 0;
-        Sleeping.set(item.body, false);
       }
     } else {
       for (let i = 0; i < list.length; i++) {
@@ -451,7 +489,7 @@ export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
         }
       }
     }
-  }, [combo]);
+  }, [combo, fromTop]);
 
   return (
     <canvas
