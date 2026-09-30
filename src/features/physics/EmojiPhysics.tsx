@@ -35,7 +35,7 @@ export const ALL_EMOJIS: string[] = [
   "🥛", "☕", "🫖", "🍵", "🍶", "🍾", "🍷", "🍸", "🍹", "🍺",
   "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🧃", "🧉", "🧊", "🥢",
   "🍽️", "🍴", "🥄", "🏺", "⚽", "🏀", "🏈", "⚾", "🥎", "🎾",
-  "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
+  "🏐", "🏐", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
   "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋",
   "🎽", "🛹", "🛼", "🛷", "⛸️", "🥌", "🎿", "⛷️", "🏂", "🪂",
   "🏋️", "🤼", "🤸", "🤺", "🧗", "🏇", "🚴", "🚵", "🏆", "🥇",
@@ -97,6 +97,14 @@ const WALL_THICKNESS = 150;
 interface EmojiItem {
   body: Matter.Body;
   emoji: string;
+  isLifted: boolean;
+  slotIndex: number | null;
+  totalSlots: number;
+  scale: number;
+}
+
+interface EmojiPhysicsProps {
+  combo?: string[] | null;
 }
 
 const getOptimalEmojiCount = (width: number, height: number): number => {
@@ -126,8 +134,12 @@ const getRandomEmojis = (count: number): string[] => {
   return result;
 };
 
-export const EmojiPhysics = () => {
+export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const itemsRef = useRef<EmojiItem[]>([]);
+  const comboRef = useRef<string[] | null>(null);
+
+  comboRef.current = combo ?? null;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -184,6 +196,7 @@ export const EmojiPhysics = () => {
     Composite.add(engine.world, [ground, leftWall, rightWall]);
 
     const activeList: EmojiItem[] = [];
+    itemsRef.current = activeList;
     const pool = getRandomEmojis(totalCount);
 
     let animationFrameId: number;
@@ -200,14 +213,49 @@ export const EmojiPhysics = () => {
       ctx.textBaseline = 'middle';
       ctx.font = `${EMOJI_SIZE}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
 
+      const now = Date.now();
+      const currentCombo = comboRef.current;
+      const targetCenterY = height * 0.43;
+      const slotGap = 52;
+
       for (let i = 0; i < activeList.length; i++) {
         const item = activeList[i];
+
+        if (item.isLifted && item.slotIndex !== null) {
+          const total = item.totalSlots;
+          const targetX = width / 2 + (item.slotIndex - (total - 1) / 2) * slotGap;
+          const bobY = Math.sin(now * 0.0032 + item.slotIndex * 0.85) * 4;
+          const targetY = targetCenterY + bobY;
+
+          const dx = targetX - item.body.position.x;
+          const dy = targetY - item.body.position.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist > 1.5) {
+            Body.setVelocity(item.body, {
+              x: dx * 0.13,
+              y: dy * 0.13
+            });
+          } else {
+            Body.setVelocity(item.body, { x: 0, y: 0 });
+            Body.setPosition(item.body, { x: targetX, y: targetY });
+          }
+
+          Body.setAngularVelocity(item.body, -item.body.angle * 0.18);
+          item.scale += (1.45 - item.scale) * 0.09;
+        }
+
         const { x, y } = item.body.position;
         const angle = item.body.angle;
 
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
+
+        if (item.scale !== 1.0) {
+          ctx.scale(item.scale, item.scale);
+        }
+
         ctx.fillText(item.emoji, 0, 0);
         ctx.restore();
       }
@@ -245,7 +293,14 @@ export const EmojiPhysics = () => {
           });
 
           Composite.add(engine.world, body);
-          activeList.push({ body, emoji });
+          activeList.push({
+            body,
+            emoji,
+            isLifted: false,
+            slotIndex: null,
+            totalSlots: 0,
+            scale: 1.0
+          });
           index++;
         }
       }, SPAWN_INTERVAL_MS);
@@ -263,7 +318,7 @@ export const EmojiPhysics = () => {
       engine.gravity.y = tiltY;
 
       for (let i = 0; i < activeList.length; i++) {
-        if (activeList[i].body.isSleeping) {
+        if (!activeList[i].isLifted && activeList[i].body.isSleeping) {
           Sleeping.set(activeList[i].body, false);
         }
       }
@@ -331,6 +386,45 @@ export const EmojiPhysics = () => {
       Engine.clear(engine);
     };
   }, []);
+
+  useEffect(() => {
+    const list = itemsRef.current;
+    if (!list || list.length === 0) return;
+
+    if (combo && combo.length > 0) {
+      const candidates = list
+        .filter((item) => !item.isLifted)
+        .sort((a, b) => b.body.position.y - a.body.position.y);
+
+      const count = Math.min(combo.length, candidates.length);
+
+      for (let i = 0; i < count; i++) {
+        const item = candidates[i];
+        item.emoji = combo[i];
+        item.isLifted = true;
+        item.slotIndex = i;
+        item.totalSlots = count;
+        item.body.collisionFilter.group = -1;
+        Sleeping.set(item.body, false);
+      }
+    } else {
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        if (item.isLifted) {
+          item.isLifted = false;
+          item.slotIndex = null;
+          item.scale = 1.0;
+          item.body.collisionFilter.group = 0;
+          Sleeping.set(item.body, false);
+          Body.setVelocity(item.body, {
+            x: (Math.random() - 0.5) * 1.5,
+            y: Math.random() * 2
+          });
+          Body.setAngularVelocity(item.body, (Math.random() - 0.5) * 0.12);
+        }
+      }
+    }
+  }, [combo]);
 
   return (
     <canvas
