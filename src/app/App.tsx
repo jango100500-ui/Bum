@@ -2,10 +2,37 @@ import { useState, useEffect, useRef } from 'react';
 import { EmojiPhysics } from '../features/physics/EmojiPhysics';
 import { SearchBar } from '../features/search/SearchBar';
 
+const DIGIT_EMOJIS: Record<string, string> = {
+  '0': '0️⃣',
+  '1': '1️⃣',
+  '2': '2️⃣',
+  '3': '3️⃣',
+  '4': '4️⃣',
+  '5': '5️⃣',
+  '6': '6️⃣',
+  '7': '7️⃣',
+  '8': '8️⃣',
+  '9': '9️⃣'
+};
+
+const BUG_EMOJIS = ['🪲', '🐞', '🚨'];
+
 export const App = () => {
   const [query, setQuery] = useState('');
   const [combo, setCombo] = useState<string[] | null>(null);
+  const [fromTop, setFromTop] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const triggerErrorCombo = (status: number) => {
+    const randomBug = BUG_EMOJIS[Math.floor(Math.random() * BUG_EMOJIS.length)];
+    const digitList = status
+      .toString()
+      .split('')
+      .map((digit) => DIGIT_EMOJIS[digit] || digit);
+
+    setFromTop(true);
+    setCombo([randomBug, ...digitList]);
+  };
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -16,6 +43,7 @@ export const App = () => {
 
     if (trimmed.length < 2) {
       setCombo(null);
+      setFromTop(false);
       return;
     }
 
@@ -31,13 +59,22 @@ export const App = () => {
           signal: controller.signal
         });
 
-        if (!res.ok) return;
+        if (!res.ok) {
+          triggerErrorCombo(res.status || 500);
+          return;
+        }
 
         const data = await res.json();
         if (Array.isArray(data?.emojis) && data.emojis.length > 0) {
+          setFromTop(false);
           setCombo(data.emojis);
+        } else {
+          triggerErrorCombo(404);
         }
-      } catch {}
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        triggerErrorCombo(500);
+      }
     }, 550);
 
     return () => {
@@ -48,7 +85,7 @@ export const App = () => {
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#f2f2f7' }}>
-      <EmojiPhysics combo={combo} />
+      <EmojiPhysics combo={combo} fromTop={fromTop} />
       <SearchBar value={query} onChange={setQuery} />
     </div>
   );
