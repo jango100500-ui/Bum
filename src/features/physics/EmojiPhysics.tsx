@@ -35,7 +35,7 @@ export const ALL_EMOJIS: string[] = [
   "🥛", "☕", "🫖", "🍵", "🍶", "🍾", "🍷", "🍸", "🍹", "🍺",
   "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🧃", "🧉", "🧊", "🥢",
   "🍽️", "🍴", "🥄", "🏺", "⚽", "🏀", "🏈", "⚾", "🥎", "🎾",
-  "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
+  "🏐", "🏐", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
   "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋",
   "🎽", "🛹", "🛼", "🛷", "⛸️", "🥌", "🎿", "⛷️", "🏂", "🪂",
   "🏋️", "🤼", "🤸", "🤺", "🧗", "🏇", "🚴", "🚵", "🏆", "🥇",
@@ -401,18 +401,33 @@ export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
     if (!list || list.length === 0) return;
 
     if (combo && combo.length > 0) {
-      const candidates = list
-        .filter((item) => !item.isLifted)
-        .sort((a, b) => b.body.position.y - a.body.position.y);
+      const chosenItems: EmojiItem[] = [];
 
-      const count = Math.min(combo.length, candidates.length);
+      for (let i = 0; i < combo.length; i++) {
+        const targetEmoji = combo[i];
+        let found = list.find((item) => !item.isLifted && !chosenItems.includes(item) && item.emoji === targetEmoji);
 
-      for (let i = 0; i < count; i++) {
-        const item = candidates[i];
-        item.emoji = combo[i];
+        if (!found) {
+          const poolCandidates = list
+            .filter((item) => !item.isLifted && !chosenItems.includes(item))
+            .sort((a, b) => b.body.position.y - a.body.position.y);
+
+          if (poolCandidates.length > 0) {
+            found = poolCandidates[0];
+            found.emoji = targetEmoji;
+          }
+        }
+
+        if (found) {
+          chosenItems.push(found);
+        }
+      }
+
+      for (let i = 0; i < chosenItems.length; i++) {
+        const item = chosenItems[i];
         item.isLifted = true;
         item.slotIndex = i;
-        item.totalSlots = count;
+        item.totalSlots = chosenItems.length;
         item.liftStartTime = Date.now();
         item.body.collisionFilter.mask = 0xFFFFFFFF;
         item.body.collisionFilter.group = 0;
