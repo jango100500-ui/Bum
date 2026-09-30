@@ -33,25 +33,3 @@ img,
 video {
   pointer-events: none;
 }
-
-@keyframes placeholderSlideInTop {
-  0% {
-    opacity: 0;
-    transform: translateY(-16px);
-  }
-  100% {
-    opacity: 0.55;
-    transform: translateY(0);
-  }
-}
-
-@keyframes placeholderSlideOutBottom {
-  0% {
-    opacity: 0.55;
-    transform: translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-}
