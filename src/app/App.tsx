@@ -1,26 +1,49 @@
-import { useState, useEffect } from 'react';
-import { EmojiPhysics, ALL_EMOJIS } from '../features/physics/EmojiPhysics';
+import { useState, useEffect, useRef } from 'react';
+import { EmojiPhysics } from '../features/physics/EmojiPhysics';
 import { SearchBar } from '../features/search/SearchBar';
 
 export const App = () => {
   const [query, setQuery] = useState('');
   const [combo, setCombo] = useState<string[] | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const trimmed = query.trim().toLowerCase();
+    const trimmed = query.trim();
 
-    if (trimmed !== 'тест' && trimmed !== 'test') {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    if (trimmed.length < 2) {
       setCombo(null);
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      const count = Math.floor(Math.random() * 4) + 3;
-      const shuffled = [...ALL_EMOJIS].sort(() => Math.random() - 0.5);
-      setCombo(shuffled.slice(0, count));
-    }, 400);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await fetch('/api/guess', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: trimmed }),
+          signal: controller.signal
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (Array.isArray(data?.emojis) && data.emojis.length > 0) {
+          setCombo(data.emojis);
+        }
+      } catch {}
+    }, 550);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [query]);
 
   return (
