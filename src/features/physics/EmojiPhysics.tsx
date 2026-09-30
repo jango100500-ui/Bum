@@ -3,7 +3,7 @@ import Matter from 'matter-js';
 
 const { Engine, Runner, Bodies, Composite, Body, Sleeping } = Matter;
 
-const ALL_EMOJIS: string[] = [
+export const ALL_EMOJIS: string[] = [
   "🤡", "🤠", "😈", "👿", "👽",
   "👻", "💀", "☠️", "🤖", "🎃", "👾",
   "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯",
