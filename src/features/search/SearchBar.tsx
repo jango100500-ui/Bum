@@ -2,36 +2,50 @@ import { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { LiquidGlass } from '../../shared/ui/LiquidGlass/LiquidGlass';
 
 const PLACEHOLDERS: string[] = [
-  'Введи название фильма…',
-  'Введи название сериала…',
-  'Введи мультфильм…',
-  'Введи книгу…',
-  'Введи аниме…'
+  'Фильмы, сериалы, мультфильмы…',
+  'Интерстеллар, Начало…',
+  'Во все тяжкие, Лучше звоните Солу…',
+  'Унесённые призраками, Ходячий замок…',
+  'Джентльмены, Карты, деньги, два ствола…',
+  'Оппенгеймер, Дюна…',
+  'Очень странные дела, Черное зеркало…',
+  'Король Лев, Тайна Коко…'
 ];
 
 export const SearchBar = () => {
   const [value, setValue] = useState('');
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [prevIdx, setPrevIdx] = useState<number | null>(null);
+  const [incomingIdx, setIncomingIdx] = useState<number | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setPrevIdx(currentIdx);
-      setCurrentIdx((prev) => (prev + 1) % PLACEHOLDERS.length);
+      const nextIdx = (currentIdx + 1) % PLACEHOLDERS.length;
+      setIncomingIdx(nextIdx);
+      setIsAnimating(false);
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsAnimating(true);
+        });
+      });
     }, 5500);
 
     return () => clearInterval(timer);
   }, [currentIdx]);
 
   useEffect(() => {
-    if (prevIdx !== null) {
-      const clearTimer = window.setTimeout(() => {
-        setPrevIdx(null);
-      }, 1100);
-      return () => clearTimeout(clearTimer);
+    if (incomingIdx !== null && isAnimating) {
+      const finishTimer = window.setTimeout(() => {
+        setCurrentIdx(incomingIdx);
+        setIncomingIdx(null);
+        setIsAnimating(false);
+      }, 900);
+
+      return () => clearTimeout(finishTimer);
     }
-  }, [prevIdx]);
+  }, [incomingIdx, isAnimating]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
@@ -104,51 +118,69 @@ export const SearchBar = () => {
           }}
         >
           {value.length === 0 && (
-            <>
-              {prevIdx !== null && (
-                <span
-                  key={`prev-${prevIdx}`}
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                height: 22,
+                overflow: 'hidden',
+                pointerEvents: 'none'
+              }}
+            >
+              {incomingIdx !== null && (
+                <div
                   style={{
                     position: 'absolute',
                     left: 0,
                     right: 0,
+                    height: 22,
+                    lineHeight: '22px',
                     color: '#1c1c1e',
+                    opacity: 0.55,
                     fontSize: 16,
                     fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
-                    pointerEvents: 'none',
-                    animation: 'placeholderSlideOutBottom 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                    transform: isAnimating ? 'translateY(0)' : 'translateY(-100%)',
+                    transition: isAnimating
+                      ? 'transform 0.85s cubic-bezier(0.16, 1, 0.3, 1)'
+                      : 'none'
                   }}
                 >
-                  {PLACEHOLDERS[prevIdx]}
-                </span>
+                  {PLACEHOLDERS[incomingIdx]}
+                </div>
               )}
 
-              <span
-                key={`curr-${currentIdx}`}
+              <div
                 style={{
                   position: 'absolute',
                   left: 0,
                   right: 0,
+                  height: 22,
+                  lineHeight: '22px',
                   color: '#1c1c1e',
+                  opacity: 0.55,
                   fontSize: 16,
                   fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  pointerEvents: 'none',
-                  animation:
-                    prevIdx !== null
-                      ? 'placeholderSlideInTop 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards'
-                      : 'none',
-                  opacity: prevIdx !== null ? undefined : 0.55
+                  transform:
+                    incomingIdx !== null
+                      ? isAnimating
+                        ? 'translateY(100%)'
+                        : 'translateY(0)'
+                      : 'translateY(0)',
+                  transition: isAnimating
+                    ? 'transform 0.85s cubic-bezier(0.16, 1, 0.3, 1)'
+                    : 'none'
                 }}
               >
                 {PLACEHOLDERS[currentIdx]}
-              </span>
-            </>
+              </div>
+            </div>
           )}
 
           <input
