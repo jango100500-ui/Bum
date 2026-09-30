@@ -35,7 +35,7 @@ export const ALL_EMOJIS: string[] = [
   "🥛", "☕", "🫖", "🍵", "🍶", "🍾", "🍷", "🍸", "🍹", "🍺",
   "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🧃", "🧉", "🧊", "🥢",
   "🍽️", "🍴", "🥄", "🏺", "⚽", "🏀", "🏈", "⚾", "🥎", "🎾",
-  "🏐", "🏐", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
+  "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
   "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋",
   "🎽", "🛹", "🛼", "🛷", "⛸️", "🥌", "🎿", "⛷️", "🏂", "🪂",
   "🏋️", "🤼", "🤸", "🤺", "🧗", "🏇", "🚴", "🚵", "🏆", "🥇",
@@ -137,9 +137,6 @@ const getRandomEmojis = (count: number): string[] => {
 export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const itemsRef = useRef<EmojiItem[]>([]);
-  const comboRef = useRef<string[] | null>(null);
-
-  comboRef.current = combo ?? null;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -214,7 +211,6 @@ export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
       ctx.font = `${EMOJI_SIZE}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
 
       const now = Date.now();
-      const currentCombo = comboRef.current;
       const targetCenterY = height * 0.43;
       const slotGap = 52;
 
