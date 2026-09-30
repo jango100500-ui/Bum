@@ -2,6 +2,11 @@ import { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { LiquidGlass } from '../../shared/ui/LiquidGlass/LiquidGlass';
 import { TITLES } from './titles';
 
+interface SearchBarProps {
+  value: string;
+  onChange: (val: string) => void;
+}
+
 const getRandomIndex = (excludeIndex: number): number => {
   if (TITLES.length <= 1) return 0;
   let next = Math.floor(Math.random() * TITLES.length);
@@ -11,8 +16,7 @@ const getRandomIndex = (excludeIndex: number): number => {
   return next;
 };
 
-export const SearchBar = () => {
-  const [value, setValue] = useState('');
+export const SearchBar = ({ value, onChange }: SearchBarProps) => {
   const [currentIdx, setCurrentIdx] = useState(() => Math.floor(Math.random() * TITLES.length));
   const [incomingIdx, setIncomingIdx] = useState<number | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -47,11 +51,11 @@ export const SearchBar = () => {
   }, [incomingIdx, isAnimating]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setValue(e.target.value);
+    onChange(e.target.value);
   };
 
   const handleClear = () => {
-    setValue('');
+    onChange('');
     inputRef.current?.focus();
   };
 
