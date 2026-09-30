@@ -5,9 +5,9 @@ export const config = {
 };
 
 const MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-2.0-flash'
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+  'gemini-2.5-flash'
 ];
 
 export default async function handler(req: Request) {
@@ -18,7 +18,9 @@ export default async function handler(req: Request) {
     });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const rawKey = process.env.GEMINI_API_KEY;
+  const apiKey = rawKey ? rawKey.trim().replace(/^["']|["']$/g, '') : null;
+
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'GEMINI_API_KEY is not configured', status: 500 }), {
       status: 500,
@@ -28,15 +30,17 @@ export default async function handler(req: Request) {
 
   try {
     const { query } = (await req.json()) as { query?: string };
+    const cleanQuery = query ? query.trim() : '';
 
-    if (!query || query.trim().length === 0) {
+    if (cleanQuery.length === 0) {
       return new Response(JSON.stringify({ emojis: [], status: 400 }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    let response: Response | null = null;
+    let lastErrorStatus = 500;
+    let lastErrorMessage = 'Unknown error';
 
     for (const model of MODELS) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -46,61 +50,68 @@ export default async function handler(req: Request) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: MOVIE_SYSTEM_PROMPT }]
-            },
             contents: [
               {
-                role: 'user',
-                parts: [{ text: query.trim() }]
+                parts: [
+                  {
+                    text: `${MOVIE_SYSTEM_PROMPT}\n\nUser request: "${cleanQuery}"`
+                  }
+                ]
               }
             ],
             generationConfig: {
-              temperature: 0.2,
+              temperature: 0.1,
               maxOutputTokens: 60
             }
           })
         });
 
         if (res.ok) {
-          response = res;
-          break;
+          const data = await res.json();
+          const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const match = rawText.match(/\[[\s\S]*?\]/);
+
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            const emojis = Array.isArray(parsed)
+              ? parsed.filter((item) => typeof item === 'string' && item.trim().length > 0).slice(0, 5)
+              : [];
+
+            if (emojis.length > 0) {
+              return new Response(JSON.stringify({ emojis, status: 200 }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+          }
+        } else {
+          lastErrorStatus = res.status;
+          try {
+            const errJson = await res.json();
+            lastErrorMessage = errJson?.error?.message || res.statusText;
+          } catch {
+            lastErrorMessage = res.statusText;
+          }
         }
-      } catch {}
+      } catch (err: unknown) {
+        lastErrorMessage = err instanceof Error ? err.message : 'Network error';
+      }
     }
 
-    if (!response || !response.ok) {
-      return new Response(JSON.stringify({ error: 'AI generation failed', status: 502 }), {
-        status: 502,
+    return new Response(
+      JSON.stringify({ error: lastErrorMessage, status: lastErrorStatus }),
+      {
+        status: lastErrorStatus,
         headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const data = await response.json();
-    const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-
-    const cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
-
-    const emojis = Array.isArray(parsed)
-      ? parsed.filter((item) => typeof item === 'string' && item.trim().length > 0).slice(0, 5)
-      : [];
-
-    if (emojis.length === 0) {
-      return new Response(JSON.stringify({ error: 'Movie not found', status: 404 }), {
-        status: 404,
+      }
+    );
+  } catch (err: unknown) {
+    return new Response(
+      JSON.stringify({ error: err instanceof Error ? err.message : 'Internal error', status: 500 }),
+      {
+        status: 500,
         headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    return new Response(JSON.stringify({ emojis, status: 200 }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch {
-    return new Response(JSON.stringify({ error: 'Internal server error', status: 500 }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+      }
+    );
   }
 }
