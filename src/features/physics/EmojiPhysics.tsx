@@ -35,7 +35,7 @@ export const ALL_EMOJIS: string[] = [
   "🥛", "☕", "🫖", "🍵", "🍶", "🍾", "🍷", "🍸", "🍹", "🍺",
   "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🧃", "🧉", "🧊", "🥢",
   "🍽️", "🍴", "🥄", "🏺", "⚽", "🏀", "🏈", "⚾", "🥎", "🎾",
-  "🏐", "🏐", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
+  "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
   "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋",
   "🎽", "🛹", "🛼", "🛷", "⛸️", "🥌", "🎿", "⛷️", "🏂", "🪂",
   "🏋️", "🤼", "🤸", "🤺", "🧗", "🏇", "🚴", "🚵", "🏆", "🥇",
@@ -101,6 +101,7 @@ interface EmojiItem {
   slotIndex: number | null;
   totalSlots: number;
   scale: number;
+  liftStartTime: number;
 }
 
 interface EmojiPhysicsProps {
@@ -226,6 +227,11 @@ export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
 
           const dx = targetX - item.body.position.x;
           const dy = targetY - item.body.position.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (now - item.liftStartTime > 240 || dist < 170) {
+            item.body.collisionFilter.mask = 0x0000;
+          }
 
           let vx = dx * 0.052;
           let vy = dy * 0.052;
@@ -236,7 +242,7 @@ export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
             vy = (vy / speed) * MAX_LIFT_SPEED;
           }
 
-          if (Math.hypot(dx, dy) > 1.2) {
+          if (dist > 1.2) {
             Body.setVelocity(item.body, { x: vx, y: vy });
           } else {
             Body.setVelocity(item.body, { x: 0, y: 0 });
@@ -301,7 +307,8 @@ export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
             isLifted: false,
             slotIndex: null,
             totalSlots: 0,
-            scale: 1.0
+            scale: 1.0,
+            liftStartTime: 0
           });
           index++;
         }
@@ -406,7 +413,9 @@ export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
         item.isLifted = true;
         item.slotIndex = i;
         item.totalSlots = count;
-        item.body.collisionFilter.group = -1;
+        item.liftStartTime = Date.now();
+        item.body.collisionFilter.mask = 0xFFFFFFFF;
+        item.body.collisionFilter.group = 0;
         Sleeping.set(item.body, false);
       }
     } else {
@@ -416,6 +425,7 @@ export const EmojiPhysics = ({ combo }: EmojiPhysicsProps) => {
           item.isLifted = false;
           item.slotIndex = null;
           item.scale = 1.0;
+          item.body.collisionFilter.mask = 0xFFFFFFFF;
           item.body.collisionFilter.group = 0;
           Sleeping.set(item.body, false);
           Body.setVelocity(item.body, {
