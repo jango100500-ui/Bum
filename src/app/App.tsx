@@ -55,7 +55,6 @@ export const App = () => {
 
     const timer = window.setTimeout(async () => {
       try {
-        // 1. Пробуем дернуть наш защищенный Vercel Edge API
         let res = await fetch('/api/guess', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -63,12 +62,10 @@ export const App = () => {
           body: JSON.stringify({ query: trimmed })
         });
 
-        // Если локальный Vite не понимает роут, он вернет 404 или HTML (из-за SPA редиректов)
         const isHtml = res.headers.get('content-type')?.includes('text/html');
 
-        // 2. ФОЛЛБЭК: Если мы находимся в режиме локальной разработки Vite (или Edge функция упала)
         if (res.status === 404 || isHtml) {
-          const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+          const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
           
           if (!apiKey) {
             triggerErrorCombo(500); 
@@ -95,7 +92,6 @@ export const App = () => {
           const data = await res.json();
           const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
           
-          // Надежный поиск массива с помощью Regex (исправляет частую ошибку 404 из-за Markdown)
           const match = rawText.match(/\[[\s\S]*?\]/);
           if (match) {
             const parsed = JSON.parse(match[0]);
@@ -114,7 +110,6 @@ export const App = () => {
           return;
         }
 
-        // 3. Обработка успешного ответа от нашего /api/guess (Продакшн Vercel)
         if (!res.ok) {
           triggerErrorCombo(res.status);
           return;
@@ -131,7 +126,7 @@ export const App = () => {
 
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        triggerErrorCombo(400); // Ошибка сети или некорректный ответ
+        triggerErrorCombo(400); 
       }
     }, 1000);
 
