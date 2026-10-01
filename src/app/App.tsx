@@ -10,12 +10,14 @@ const DIGIT_EMOJIS: Record<string, string> = {
 const BUG_EMOJIS = ['🪲', '🐞', '🚨'];
 
 const MOVIE_SYSTEM_PROMPT = `
-You are a movie/TV series/anime emoji converter. 
-User will give a title. 
-You must reply with a valid JSON array of strings containing EXACTLY 3 to 5 emojis describing it.
-Example: ["🚢", "🧊", "🌹"]
-If you don't know it, return random generic movie emojis like ["🍿", "🎬", "🎞️"].
-Do not return anything else. Return ONLY JSON.
+You are a movie and pop-culture emoji assistant.
+Identify the movie, TV series, cartoon or show from the user's title or description.
+Return ONLY a valid JSON array of 3 to 5 emojis representing its key plot, characters, or iconic objects.
+Example output for Titanic: ["🚢", "🧊", "🌹", "🎻", "🌊"]
+Example output for Breaking Bad: ["⚗️", "🧪", "💵", "🚐", "🍗"]
+Strict rules:
+- Return ONLY the JSON array (no markdown code blocks, no other words).
+- If unknown, return [].
 `.trim();
 
 export const App = () => {
@@ -38,7 +40,6 @@ export const App = () => {
   useEffect(() => {
     const trimmed = query.trim();
 
-    // Если начали печатать новый текст — сразу сбрасываем предыдущий запрос
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -52,53 +53,85 @@ export const App = () => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // Ждем ровно 1 секунду тишины после последнего ввода
     const timer = window.setTimeout(async () => {
       try {
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-        
-        if (!apiKey) {
-          triggerErrorCombo(500); 
-          return;
-        }
-
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-        const res = await fetch(url, {
+        // 1. Пробуем дернуть наш защищенный Vercel Edge API
+        let res = await fetch('/api/guess', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `${MOVIE_SYSTEM_PROMPT}\n\nUser request: "${trimmed}"` }] }],
-            generationConfig: { 
-              temperature: 0.2, 
-              responseMimeType: "application/json" // Жестко заставляем отдавать только JSON
-            }
-          })
+          body: JSON.stringify({ query: trimmed })
         });
 
+        // Если локальный Vite не понимает роут, он вернет 404 или HTML (из-за SPA редиректов)
+        const isHtml = res.headers.get('content-type')?.includes('text/html');
+
+        // 2. ФОЛЛБЭК: Если мы находимся в режиме локальной разработки Vite (или Edge функция упала)
+        if (res.status === 404 || isHtml) {
+          const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+          
+          if (!apiKey) {
+            triggerErrorCombo(500); 
+            return;
+          }
+
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+          res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: `${MOVIE_SYSTEM_PROMPT}\n\nUser request: "${trimmed}"` }] }],
+              generationConfig: { temperature: 0.1 }
+            })
+          });
+
+          if (!res.ok) {
+            triggerErrorCombo(res.status);
+            return;
+          }
+
+          const data = await res.json();
+          const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+          
+          // Надежный поиск массива с помощью Regex (исправляет частую ошибку 404 из-за Markdown)
+          const match = rawText.match(/\[[\s\S]*?\]/);
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            const emojis = Array.isArray(parsed)
+              ? parsed.filter((item) => typeof item === 'string' && item.trim().length > 0).slice(0, 5)
+              : [];
+
+            if (emojis.length > 0) {
+              setFromTop(false);
+              setCombo(emojis);
+              return;
+            }
+          }
+          
+          triggerErrorCombo(404);
+          return;
+        }
+
+        // 3. Обработка успешного ответа от нашего /api/guess (Продакшн Vercel)
         if (!res.ok) {
           triggerErrorCombo(res.status);
           return;
         }
 
         const data = await res.json();
-        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-        const parsed = JSON.parse(rawText);
 
-        const emojis = Array.isArray(parsed)
-          ? parsed.filter((item) => typeof item === 'string' && item.trim().length > 0).slice(0, 5)
-          : [];
-
-        if (emojis.length > 0) {
+        if (data.emojis && data.emojis.length > 0) {
           setFromTop(false);
-          setCombo(emojis);
+          setCombo(data.emojis);
         } else {
           triggerErrorCombo(404);
         }
+
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        triggerErrorCombo(400); // Ошибка парсинга или сети
+        triggerErrorCombo(400); // Ошибка сети или некорректный ответ
       }
     }, 1000);
 
