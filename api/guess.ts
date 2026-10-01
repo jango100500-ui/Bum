@@ -5,14 +5,14 @@ export const config = {
 };
 
 const MODELS = [
+  'gemini-2.5-flash',
   'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemini-2.5-flash'
+  'gemini-2.5-flash-lite'
 ];
 
 export default async function handler(req: Request) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed', status: 405 }), {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -33,8 +33,8 @@ export default async function handler(req: Request) {
     const cleanQuery = query ? query.trim() : '';
 
     if (cleanQuery.length === 0) {
-      return new Response(JSON.stringify({ emojis: [], status: 400 }), {
-        status: 400,
+      return new Response(JSON.stringify({ emojis: [] }), {
+        status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -61,16 +61,22 @@ export default async function handler(req: Request) {
             ],
             generationConfig: {
               temperature: 0.1,
-              maxOutputTokens: 60
+              maxOutputTokens: 1000
             }
           })
         });
 
         if (res.ok) {
           const data = await res.json();
-          const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          const match = rawText.match(/\[[\s\S]*?\]/);
+          const parts = data?.candidates?.[0]?.content?.parts || [];
+          let rawText = '';
+          for (const part of parts) {
+            if (typeof part.text === 'string') {
+              rawText += part.text;
+            }
+          }
 
+          const match = rawText.match(/\[[\s\S]*?\]/);
           if (match) {
             const parsed = JSON.parse(match[0]);
             const emojis = Array.isArray(parsed)
