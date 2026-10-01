@@ -62,9 +62,10 @@ export const App = () => {
           body: JSON.stringify({ query: trimmed })
         });
 
-        const isHtml = res.headers.get('content-type')?.includes('text/html');
+        // Если локальный Vite возвращает index.html вместо API
+        const isViteHtmlFallback = res.headers.get('content-type')?.includes('text/html');
 
-        if (res.status === 404 || isHtml) {
+        if (isViteHtmlFallback) {
           const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
           
           if (!apiKey) {
@@ -72,7 +73,7 @@ export const App = () => {
             return;
           }
 
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
           res = await fetch(url, {
             method: 'POST',
@@ -80,7 +81,7 @@ export const App = () => {
             signal: controller.signal,
             body: JSON.stringify({
               contents: [{ parts: [{ text: `${MOVIE_SYSTEM_PROMPT}\n\nUser request: "${trimmed}"` }] }],
-              generationConfig: { temperature: 0.1 }
+              generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
             })
           });
 
@@ -90,7 +91,11 @@ export const App = () => {
           }
 
           const data = await res.json();
-          const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+          const parts = data?.candidates?.[0]?.content?.parts || [];
+          let rawText = '';
+          for (const part of parts) {
+            if (typeof part.text === 'string') rawText += part.text;
+          }
           
           const match = rawText.match(/\[[\s\S]*?\]/);
           if (match) {
@@ -110,18 +115,14 @@ export const App = () => {
           return;
         }
 
-        if (!res.ok) {
-          triggerErrorCombo(res.status);
-          return;
-        }
-
+        // Ответ от Vercel API
         const data = await res.json();
 
-        if (data.emojis && data.emojis.length > 0) {
+        if (res.ok && data.emojis && data.emojis.length > 0) {
           setFromTop(false);
           setCombo(data.emojis);
         } else {
-          triggerErrorCombo(404);
+          triggerErrorCombo(res.status || 404);
         }
 
       } catch (err: unknown) {
